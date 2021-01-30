@@ -22,18 +22,36 @@ package cgroup
 //go:generate mockgen -source $GOFILE -package=$GOPACKAGE -destination=generated_mock_$GOFILE
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
 	"github.com/opencontainers/runc/libcontainer/cgroups"
+	"github.com/opencontainers/runc/libcontainer/cgroups/devices"
+	"github.com/opencontainers/runc/libcontainer/cgroups/ebpf"
+	"github.com/opencontainers/runc/libcontainer/cgroups/ebpf/devicefilter"
+	"github.com/opencontainers/runc/libcontainer/cgroups/fscommon"
+	"github.com/opencontainers/runc/libcontainer/configs"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
 	procMountPoint   = "/proc"
 	cgroupMountPoint = "/sys/fs/cgroup"
+)
+
+var (
+	errNoPreciseMatch = errors.New("resulting devices cgroup doesn't precisely match target")
+	errNoMatch        = errors.New("resulting devices cgroup doesn't match target mode")
+
+	isCgroup2UnifiedMode         = cgroups.IsCgroup2UnifiedMode
+	loadAttachCgroupDeviceFilter = ebpf.LoadAttachCgroupDeviceFilter
 )
 
 func ControllerPath(controller string) string {
@@ -133,4 +151,128 @@ func newParser(isCgroup2UnifiedMode bool, procMount, cgroupMount string) Parser 
 	return &v1Parser{
 		procMount: procMount,
 	}
+}
+
+type DeviceController interface {
+	// UpdateBlockMajorMinor applies whitelist rule for the block device identified
+	// by the given major, minor and path.
+	UpdateBlockMajorMinor(major, minor int64, path string, allow, skipSafetyCheck bool) error
+}
+
+type v1DeviceController struct {
+}
+
+func (v1 *v1DeviceController) UpdateBlockMajorMinor(major, minor int64, path string, allow, skipSafetyCheck bool) error {
+	deviceRule := newBlockDeviceRule(major, minor, allow)
+	return updateDevicesList(path, deviceRule, skipSafetyCheck)
+}
+
+func newBlockDeviceRule(major, minor int64, allow bool) *configs.DeviceRule {
+	return &configs.DeviceRule{
+		Type:        configs.BlockDevice,
+		Major:       major,
+		Minor:       minor,
+		Permissions: "rwm",
+		Allow:       allow,
+	}
+}
+
+func updateDevicesList(path string, rule *configs.DeviceRule, skipSafetyCheck bool) error {
+	// Create the target emulator for comparison later.
+	target, err := loadEmulator(path)
+	if err != nil {
+		return err
+	}
+	target.Apply(*rule)
+
+	file := "devices.deny"
+	if rule.Allow {
+		file = "devices.allow"
+	}
+	if err := fscommon.WriteFile(path, file, rule.CgroupString()); err != nil {
+		return err
+	}
+
+	// Final safety check -- ensure that the resulting state is what was
+	// requested. This is only really correct for white-lists, but for
+	// black-lists we can at least check that the cgroup is in the right mode.
+	currentAfter, err := loadEmulator(path)
+	if err != nil {
+		return err
+	}
+	if !skipSafetyCheck {
+		if !target.IsBlacklist() && !reflect.DeepEqual(currentAfter, target) {
+			return errNoPreciseMatch
+		} else if target.IsBlacklist() != currentAfter.IsBlacklist() {
+			return errNoMatch
+		}
+	}
+	return nil
+}
+
+func loadEmulator(path string) (*devices.Emulator, error) {
+	list, err := fscommon.ReadFile(path, "devices.list")
+	if err != nil {
+		return nil, err
+	}
+	return devices.EmulatorFromList(bytes.NewBufferString(list))
+}
+
+type v2DeviceController struct {
+	closers map[string]func() error
+}
+
+func (v2 *v2DeviceController) UpdateBlockMajorMinor(major, minor int64, path string, allow, skipSafetyCheck bool) error {
+	key := composeDeviceKey(major, minor, path)
+	closer, exists := v2.closers[key]
+
+	if allow {
+		if exists {
+			return fmt.Errorf("Device already whitelisted: %s", key)
+		}
+		deviceRule := newBlockDeviceRule(major, minor, allow)
+		closer, err := attachDeviceFilter(path, deviceRule)
+		if err == nil {
+			v2.closers[key] = closer
+		}
+		return err
+	} else {
+		if !exists {
+			return fmt.Errorf("Device is not whitelisted: %s", key)
+		}
+		delete(v2.closers, key)
+		return closer()
+	}
+}
+
+func composeDeviceKey(major, minor int64, path string) string {
+	return filepath.Join(path, fmt.Sprintf("%d:%d", major, minor))
+}
+
+// Based on setDevices from
+//  https://github.com/opencontainers/runc/blob/ff819c7e9184c13b7c2607fe6c30ae19403a7aff/libcontainer/cgroups/fs2/devices.go#L40
+func attachDeviceFilter(path string, rule *configs.DeviceRule) (closer func() error, err error) {
+	closer = func() error { return nil }
+
+	insts, license, err := devicefilter.DeviceFilter([]*configs.DeviceRule{rule})
+	if err != nil {
+		return
+	}
+
+	dirFD, err := unix.Open(path, unix.O_DIRECTORY|unix.O_RDONLY, 0600)
+	if err != nil {
+		return
+	}
+	defer unix.Close(dirFD)
+
+	return loadAttachCgroupDeviceFilter(insts, license, dirFD)
+}
+
+func NewDeviceController() DeviceController {
+	if isCgroup2UnifiedMode() {
+		return &v2DeviceController{
+			closers: make(map[string]func() error),
+		}
+	}
+	return &v1DeviceController{}
 }

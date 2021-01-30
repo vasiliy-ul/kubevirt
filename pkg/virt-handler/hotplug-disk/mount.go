@@ -1,9 +1,7 @@
 package hotplug_volume
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,7 +9,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,9 +19,6 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-handler/cgroup"
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 
-	"github.com/opencontainers/runc/libcontainer/cgroups/devices"
-	"github.com/opencontainers/runc/libcontainer/cgroups/fscommon"
-	"github.com/opencontainers/runc/libcontainer/configs"
 	"github.com/prometheus/procfs"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -86,11 +80,12 @@ var (
 //go:generate mockgen -source $GOFILE -package=$GOPACKAGE -destination=generated_mock_$GOFILE
 
 type volumeMounter struct {
-	podIsolationDetector isolation.PodIsolationDetector
-	mountStateDir        string
-	mountRecords         map[types.UID]*vmiMountTargetRecord
-	mountRecordsLock     sync.Mutex
-	skipSafetyCheck      bool
+	podIsolationDetector   isolation.PodIsolationDetector
+	mountStateDir          string
+	mountRecords           map[types.UID]*vmiMountTargetRecord
+	mountRecordsLock       sync.Mutex
+	skipSafetyCheck        bool
+	cgroupDeviceController cgroup.DeviceController
 }
 
 // VolumeMounter is the interface used to mount and unmount volumes to/from a running virtlauncher pod.
@@ -114,11 +109,12 @@ type vmiMountTargetRecord struct {
 }
 
 // NewVolumeMounter creates a new VolumeMounter
-func NewVolumeMounter(isoDetector isolation.PodIsolationDetector, mountStateDir string) VolumeMounter {
+func NewVolumeMounter(isoDetector isolation.PodIsolationDetector, cgroupDeviceController cgroup.DeviceController, mountStateDir string) VolumeMounter {
 	return &volumeMounter{
-		podIsolationDetector: isoDetector,
-		mountRecords:         make(map[types.UID]*vmiMountTargetRecord),
-		mountStateDir:        mountStateDir,
+		podIsolationDetector:   isoDetector,
+		mountRecords:           make(map[types.UID]*vmiMountTargetRecord),
+		mountStateDir:          mountStateDir,
+		cgroupDeviceController: cgroupDeviceController,
 	}
 }
 
@@ -455,66 +451,11 @@ func (m *volumeMounter) getTargetCgroupPath(vmi *v1.VirtualMachineInstance) (str
 }
 
 func (m *volumeMounter) removeBlockMajorMinor(major, minor int64, path string) error {
-	return m.updateBlockMajorMinor(major, minor, path, false)
+	return m.cgroupDeviceController.UpdateBlockMajorMinor(major, minor, path, false, m.skipSafetyCheck)
 }
 
 func (m *volumeMounter) allowBlockMajorMinor(major, minor int64, path string) error {
-	return m.updateBlockMajorMinor(major, minor, path, true)
-}
-
-func (m *volumeMounter) updateBlockMajorMinor(major, minor int64, path string, allow bool) error {
-	deviceRule := &configs.DeviceRule{
-		Type:        configs.BlockDevice,
-		Major:       major,
-		Minor:       minor,
-		Permissions: "rwm",
-		Allow:       allow,
-	}
-	if err := m.updateDevicesList(path, deviceRule); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *volumeMounter) loadEmulator(path string) (*devices.Emulator, error) {
-	list, err := fscommon.ReadFile(path, "devices.list")
-	if err != nil {
-		return nil, err
-	}
-	return devices.EmulatorFromList(bytes.NewBufferString(list))
-}
-
-func (m *volumeMounter) updateDevicesList(path string, rule *configs.DeviceRule) error {
-	// Create the target emulator for comparison later.
-	target, err := m.loadEmulator(path)
-	if err != nil {
-		return err
-	}
-	target.Apply(*rule)
-
-	file := "devices.deny"
-	if rule.Allow {
-		file = "devices.allow"
-	}
-	if err := fscommon.WriteFile(path, file, rule.CgroupString()); err != nil {
-		return err
-	}
-
-	// Final safety check -- ensure that the resulting state is what was
-	// requested. This is only really correct for white-lists, but for
-	// black-lists we can at least check that the cgroup is in the right mode.
-	currentAfter, err := m.loadEmulator(path)
-	if err != nil {
-		return err
-	}
-	if !m.skipSafetyCheck {
-		if !target.IsBlacklist() && !reflect.DeepEqual(currentAfter, target) {
-			return errors.New("resulting devices cgroup doesn't precisely match target")
-		} else if target.IsBlacklist() != currentAfter.IsBlacklist() {
-			return errors.New("resulting devices cgroup doesn't match target mode")
-		}
-	}
-	return nil
+	return m.cgroupDeviceController.UpdateBlockMajorMinor(major, minor, path, true, m.skipSafetyCheck)
 }
 
 func (m *volumeMounter) createBlockDeviceFile(deviceName string, major, minor int64, blockDevicePermissions string) (string, error) {

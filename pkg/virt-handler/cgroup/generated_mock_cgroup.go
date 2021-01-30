@@ -38,3 +38,34 @@ func (_m *MockParser) Parse(pid int) (map[string]string, error) {
 func (_mr *_MockParserRecorder) Parse(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Parse", arg0)
 }
+
+// Mock of DeviceController interface
+type MockDeviceController struct {
+	ctrl     *gomock.Controller
+	recorder *_MockDeviceControllerRecorder
+}
+
+// Recorder for MockDeviceController (not exported)
+type _MockDeviceControllerRecorder struct {
+	mock *MockDeviceController
+}
+
+func NewMockDeviceController(ctrl *gomock.Controller) *MockDeviceController {
+	mock := &MockDeviceController{ctrl: ctrl}
+	mock.recorder = &_MockDeviceControllerRecorder{mock}
+	return mock
+}
+
+func (_m *MockDeviceController) EXPECT() *_MockDeviceControllerRecorder {
+	return _m.recorder
+}
+
+func (_m *MockDeviceController) UpdateBlockMajorMinor(major int64, minor int64, path string, allow bool, skipSafetyCheck bool) error {
+	ret := _m.ctrl.Call(_m, "UpdateBlockMajorMinor", major, minor, path, allow, skipSafetyCheck)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockDeviceControllerRecorder) UpdateBlockMajorMinor(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateBlockMajorMinor", arg0, arg1, arg2, arg3, arg4)
+}

@@ -66,6 +66,7 @@ import (
 	pvcutils "kubevirt.io/kubevirt/pkg/util/types"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 	virtcache "kubevirt.io/kubevirt/pkg/virt-handler/cache"
+	"kubevirt.io/kubevirt/pkg/virt-handler/cgroup"
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 	migrationproxy "kubevirt.io/kubevirt/pkg/virt-handler/migration-proxy"
@@ -132,6 +133,7 @@ func NewController(
 ) *VirtualMachineController {
 
 	queue := workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+	cgroupDeviceController := cgroup.NewDeviceController()
 
 	c := &VirtualMachineController{
 		Queue:                       queue,
@@ -149,7 +151,7 @@ func NewController(
 		migrationProxy:              migrationProxy,
 		podIsolationDetector:        podIsolationDetector,
 		containerDiskMounter:        container_disk.NewMounter(podIsolationDetector, virtPrivateDir+"/container-disk-mount-state"),
-		hotplugVolumeMounter:        hotplug_volume.NewVolumeMounter(podIsolationDetector, virtPrivateDir+"/hotplug-volume-mount-state"),
+		hotplugVolumeMounter:        hotplug_volume.NewVolumeMounter(podIsolationDetector, cgroupDeviceController, virtPrivateDir+"/hotplug-volume-mount-state"),
 		clusterConfig:               clusterConfig,
 		networkCacheStoreFactory:    netcache.NewInterfaceCacheFactory(),
 		virtLauncherFSRunDirPattern: "/proc/%d/root/var/run",

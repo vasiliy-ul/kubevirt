@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/golang/mock/gomock"
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/gomega"
@@ -38,6 +39,7 @@ import (
 	v1 "kubevirt.io/client-go/api/v1"
 	"kubevirt.io/client-go/log"
 	hotplugdisk "kubevirt.io/kubevirt/pkg/hotplug-disk"
+	"kubevirt.io/kubevirt/pkg/virt-handler/cgroup"
 	"kubevirt.io/kubevirt/pkg/virt-handler/isolation"
 )
 
@@ -58,10 +60,12 @@ var (
 
 var _ = Describe("HotplugVolume mount target records", func() {
 	var (
-		m      *volumeMounter
-		err    error
-		vmi    *v1.VirtualMachineInstance
-		record *vmiMountTargetRecord
+		ctrl                   *gomock.Controller
+		cgroupDeviceController *cgroup.MockDeviceController
+		m                      *volumeMounter
+		err                    error
+		vmi                    *v1.VirtualMachineInstance
+		record                 *vmiMountTargetRecord
 	)
 
 	BeforeEach(func() {
@@ -70,10 +74,19 @@ var _ = Describe("HotplugVolume mount target records", func() {
 		vmi = v1.NewMinimalVMI("fake-vmi")
 		vmi.UID = "1234"
 
+		ctrl = gomock.NewController(GinkgoT())
+		cgroupDeviceController = cgroup.NewMockDeviceController(ctrl)
+		cgroupDeviceController.
+			EXPECT().
+			UpdateBlockMajorMinor(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil).
+			AnyTimes()
+
 		m = &volumeMounter{
-			podIsolationDetector: &mockIsolationDetector{},
-			mountRecords:         make(map[types.UID]*vmiMountTargetRecord),
-			mountStateDir:        tempDir,
+			podIsolationDetector:   &mockIsolationDetector{},
+			mountRecords:           make(map[types.UID]*vmiMountTargetRecord),
+			mountStateDir:          tempDir,
+			cgroupDeviceController: cgroupDeviceController,
 		}
 		record = &vmiMountTargetRecord{
 			MountTargetEntries: []vmiMountTargetEntry{
@@ -97,6 +110,8 @@ var _ = Describe("HotplugVolume mount target records", func() {
 		statCommand = orgStatCommand
 		cgroupsBasePath = orgCgroupsBasePath
 		mknodCommand = orgMknodCommand
+
+		ctrl.Finish()
 	})
 
 	It("setMountTargetRecord should fail if vmi.UID is empty", func() {
@@ -161,10 +176,12 @@ var _ = Describe("HotplugVolume mount target records", func() {
 
 var _ = Describe("HotplugVolume block devices", func() {
 	var (
-		m      *volumeMounter
-		err    error
-		vmi    *v1.VirtualMachineInstance
-		record *vmiMountTargetRecord
+		ctrl                   *gomock.Controller
+		cgroupDeviceController *cgroup.MockDeviceController
+		m                      *volumeMounter
+		err                    error
+		vmi                    *v1.VirtualMachineInstance
+		record                 *vmiMountTargetRecord
 	)
 
 	BeforeEach(func() {
@@ -176,11 +193,15 @@ var _ = Describe("HotplugVolume block devices", func() {
 		activePods["abcd"] = "host"
 		vmi.Status.ActivePods = activePods
 
+		ctrl = gomock.NewController(GinkgoT())
+		cgroupDeviceController = cgroup.NewMockDeviceController(ctrl)
+
 		m = &volumeMounter{
-			podIsolationDetector: &mockIsolationDetector{},
-			mountRecords:         make(map[types.UID]*vmiMountTargetRecord),
-			mountStateDir:        tempDir,
-			skipSafetyCheck:      true,
+			podIsolationDetector:   &mockIsolationDetector{},
+			mountRecords:           make(map[types.UID]*vmiMountTargetRecord),
+			mountStateDir:          tempDir,
+			skipSafetyCheck:        true,
+			cgroupDeviceController: cgroupDeviceController,
 		}
 		record = &vmiMountTargetRecord{}
 
@@ -203,6 +224,8 @@ var _ = Describe("HotplugVolume block devices", func() {
 		cgroupsBasePath = orgCgroupsBasePath
 		mknodCommand = orgMknodCommand
 		isBlockDevice = orgIsBlockDevice
+
+		ctrl.Finish()
 	})
 
 	It("isBlockVolume should determine if we have a block volume", func() {
@@ -236,26 +259,29 @@ var _ = Describe("HotplugVolume block devices", func() {
 	})
 
 	It("mountBlockHotplugVolume and unmountBlockHotplugVolumes should make appropriate calls", func() {
+		slicePath := "slice"
+		expectedPath := filepath.Join(tempDir, slicePath)
+
+		callMount := cgroupDeviceController.
+			EXPECT().
+			UpdateBlockMajorMinor(int64(6), int64(6), expectedPath, true, gomock.Any()).
+			Return(nil)
+		cgroupDeviceController.
+			EXPECT().
+			UpdateBlockMajorMinor(int64(6), int64(6), expectedPath, false, gomock.Any()).
+			Return(nil).
+			After(callMount)
+
 		blockSourcePodUID := types.UID("fghij")
 		hotplugdisk.SetKubeletPodsDirectory(tempDir)
 		targetPodPath := filepath.Join(tempDir, string(m.findVirtlauncherUID(vmi)), "volumes/kubernetes.io~empty-dir/hotplug-disks")
 		err = os.MkdirAll(targetPodPath, 0755)
 		Expect(err).ToNot(HaveOccurred())
 		deviceFile := filepath.Join(tempDir, string(blockSourcePodUID), "volumes", "file")
-		slicePath := "slice"
 		m.podIsolationDetector = &mockIsolationDetector{
 			slice: slicePath,
 		}
 		err = os.MkdirAll(filepath.Join(tempDir, slicePath), 0755)
-		Expect(err).ToNot(HaveOccurred())
-		devicesFile := filepath.Join(tempDir, slicePath, "devices.list")
-		allowFile := filepath.Join(tempDir, slicePath, "devices.allow")
-		denyFile := filepath.Join(tempDir, slicePath, "devices.deny")
-		_, err := os.Create(allowFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(devicesFile)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.MkdirAll(filepath.Dir(deviceFile), 0755)
 		Expect(err).ToNot(HaveOccurred())
@@ -266,17 +292,10 @@ var _ = Describe("HotplugVolume block devices", func() {
 		By("Verifying the block file exists")
 		_, err = os.Stat(filepath.Join(targetPodPath, "testvolume"))
 		Expect(err).ToNot(HaveOccurred())
-		By("Verifying the correct values are written to the allow file")
-		content, err := ioutil.ReadFile(allowFile)
-		Expect(err).ToNot(HaveOccurred())
-		Expect("b 6:6 rwm").To(Equal(string(content)))
 
 		By("Unmounting, we verify the reverse process happens")
 		err = m.unmountBlockHotplugVolumes(filepath.Join(targetPodPath, "testvolume"), vmi)
 		Expect(err).ToNot(HaveOccurred())
-		content, err = ioutil.ReadFile(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		Expect("b 6:6 rwm").To(Equal(string(content)))
 		_, err = os.Stat(filepath.Join(targetPodPath, "testvolume"))
 		Expect(err).To(HaveOccurred())
 	})
@@ -419,36 +438,36 @@ var _ = Describe("HotplugVolume block devices", func() {
 		Expect(err.Error()).To(ContainSubstring("but it is not a directory"))
 	})
 
-	It("should write properly to allow/deny files if able", func() {
-		allowFile := filepath.Join(tempDir, "devices.allow")
-		listFile := filepath.Join(tempDir, "devices.list")
-		denyFile := filepath.Join(tempDir, "devices.deny")
-		_, err := os.Create(allowFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(listFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		err = m.allowBlockMajorMinor(34, 53, filepath.Dir(allowFile))
-		Expect(err).ToNot(HaveOccurred())
-		content, err := ioutil.ReadFile(allowFile)
-		Expect(err).ToNot(HaveOccurred())
-		Expect("b 34:53 rwm").To(Equal(string(content)))
+	It("should trigger the update for the block device rule", func() {
+		gomock.InOrder(
+			cgroupDeviceController.
+				EXPECT().
+				UpdateBlockMajorMinor(int64(34), int64(53), tempDir, true, gomock.Any()).
+				Return(nil),
+			cgroupDeviceController.
+				EXPECT().
+				UpdateBlockMajorMinor(int64(34), int64(53), tempDir, false, gomock.Any()).
+				Return(nil),
+			cgroupDeviceController.
+				EXPECT().
+				UpdateBlockMajorMinor(int64(34), int64(53), tempDir, true, gomock.Any()).
+				Return(fmt.Errorf("")),
+			cgroupDeviceController.
+				EXPECT().
+				UpdateBlockMajorMinor(int64(34), int64(53), tempDir, false, gomock.Any()).
+				Return(fmt.Errorf("")),
+		)
 
-		err = m.removeBlockMajorMinor(34, 53, filepath.Dir(denyFile))
+		err = m.allowBlockMajorMinor(34, 53, tempDir)
 		Expect(err).ToNot(HaveOccurred())
-		content, err = ioutil.ReadFile(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		Expect("b 34:53 rwm").To(Equal(string(content)))
-	})
 
-	It("Should error if allow/deny cannot be found", func() {
-		allowFile := filepath.Join(tempDir, "devices.allow")
-		denyFile := filepath.Join(tempDir, "devices.deny")
-		err = m.allowBlockMajorMinor(34, 53, filepath.Dir(allowFile))
+		err = m.removeBlockMajorMinor(34, 53, tempDir)
+		Expect(err).ToNot(HaveOccurred())
+
+		err = m.allowBlockMajorMinor(34, 53, tempDir)
 		Expect(err).To(HaveOccurred())
 
-		err = m.removeBlockMajorMinor(34, 53, filepath.Dir(denyFile))
+		err = m.removeBlockMajorMinor(34, 53, tempDir)
 		Expect(err).To(HaveOccurred())
 	})
 
@@ -499,6 +518,12 @@ var _ = Describe("HotplugVolume block devices", func() {
 	It("Should remove the block device and permissions on unmount", func() {
 		slicePath := "slice"
 		expectedCgroupPath := filepath.Join(tempDir, slicePath)
+
+		cgroupDeviceController.
+			EXPECT().
+			UpdateBlockMajorMinor(int64(581), int64(50), expectedCgroupPath, false, gomock.Any()).
+			Return(nil)
+
 		m.podIsolationDetector = &mockIsolationDetector{
 			slice: slicePath,
 		}
@@ -508,20 +533,10 @@ var _ = Describe("HotplugVolume block devices", func() {
 			return []byte("245,32,0664,block special file"), nil
 		}
 		deviceFileName := filepath.Join(tempDir, "devicefile")
-		denyFile := filepath.Join(expectedCgroupPath, "devices.deny")
-		listFile := filepath.Join(expectedCgroupPath, "devices.list")
 		_, err := os.Create(deviceFileName)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(listFile)
 		Expect(err).ToNot(HaveOccurred())
 		err = m.unmountBlockHotplugVolumes(deviceFileName, vmi)
 		Expect(err).ToNot(HaveOccurred())
-		content, err := ioutil.ReadFile(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		// Since stat returns values in hex, we need to get hex value as int.
-		Expect("b 581:50 rwm").To(Equal(string(content)))
 		_, err = os.Stat(deviceFileName)
 		Expect(err).To(HaveOccurred())
 	})
@@ -566,10 +581,12 @@ var _ = Describe("HotplugVolume block devices", func() {
 
 var _ = Describe("HotplugVolume filesystem volumes", func() {
 	var (
-		m      *volumeMounter
-		err    error
-		vmi    *v1.VirtualMachineInstance
-		record *vmiMountTargetRecord
+		ctrl                   *gomock.Controller
+		cgroupDeviceController *cgroup.MockDeviceController
+		m                      *volumeMounter
+		err                    error
+		vmi                    *v1.VirtualMachineInstance
+		record                 *vmiMountTargetRecord
 	)
 
 	BeforeEach(func() {
@@ -583,10 +600,19 @@ var _ = Describe("HotplugVolume filesystem volumes", func() {
 
 		record = &vmiMountTargetRecord{}
 
+		ctrl = gomock.NewController(GinkgoT())
+		cgroupDeviceController = cgroup.NewMockDeviceController(ctrl)
+		cgroupDeviceController.
+			EXPECT().
+			UpdateBlockMajorMinor(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil).
+			AnyTimes()
+
 		m = &volumeMounter{
-			podIsolationDetector: &mockIsolationDetector{},
-			mountRecords:         make(map[types.UID]*vmiMountTargetRecord),
-			mountStateDir:        tempDir,
+			podIsolationDetector:   &mockIsolationDetector{},
+			mountRecords:           make(map[types.UID]*vmiMountTargetRecord),
+			mountStateDir:          tempDir,
+			cgroupDeviceController: cgroupDeviceController,
 		}
 
 		deviceBasePath = func(sourceUID types.UID) string {
@@ -604,6 +630,8 @@ var _ = Describe("HotplugVolume filesystem volumes", func() {
 		isMounted = orgIsMounted
 		procMounts = orgProcMounts
 		isolationDetector = orgIsoDetector
+
+		ctrl.Finish()
 	})
 
 	It("getSourcePodFile should find the disk.img file, if it exists", func() {
@@ -786,9 +814,11 @@ var _ = Describe("HotplugVolume filesystem volumes", func() {
 
 var _ = Describe("HotplugVolume volumes", func() {
 	var (
-		m   *volumeMounter
-		err error
-		vmi *v1.VirtualMachineInstance
+		ctrl                   *gomock.Controller
+		cgroupDeviceController *cgroup.MockDeviceController
+		m                      *volumeMounter
+		err                    error
+		vmi                    *v1.VirtualMachineInstance
 	)
 
 	BeforeEach(func() {
@@ -800,11 +830,20 @@ var _ = Describe("HotplugVolume volumes", func() {
 		activePods["abcd"] = "host"
 		vmi.Status.ActivePods = activePods
 
+		ctrl = gomock.NewController(GinkgoT())
+		cgroupDeviceController = cgroup.NewMockDeviceController(ctrl)
+		cgroupDeviceController.
+			EXPECT().
+			UpdateBlockMajorMinor(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil).
+			AnyTimes()
+
 		m = &volumeMounter{
-			podIsolationDetector: &mockIsolationDetector{},
-			mountRecords:         make(map[types.UID]*vmiMountTargetRecord),
-			mountStateDir:        tempDir,
-			skipSafetyCheck:      true,
+			podIsolationDetector:   &mockIsolationDetector{},
+			mountRecords:           make(map[types.UID]*vmiMountTargetRecord),
+			mountStateDir:          tempDir,
+			skipSafetyCheck:        true,
+			cgroupDeviceController: cgroupDeviceController,
 		}
 
 		deviceBasePath = func(sourceUID types.UID) string {
@@ -829,6 +868,8 @@ var _ = Describe("HotplugVolume volumes", func() {
 		cgroupsBasePath = orgCgroupsBasePath
 		mknodCommand = orgMknodCommand
 		isBlockDevice = orgIsBlockDevice
+
+		ctrl.Finish()
 	})
 
 	It("mount and umount should work for filesystem volumes", func() {
@@ -872,21 +913,6 @@ var _ = Describe("HotplugVolume volumes", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		deviceFile := filepath.Join(blockDevicePath, "file")
-		slicePath := "slice"
-		m.podIsolationDetector = &mockIsolationDetector{
-			slice: slicePath,
-		}
-		err = os.MkdirAll(filepath.Join(tempDir, slicePath), 0755)
-		Expect(err).ToNot(HaveOccurred())
-		allowFile := filepath.Join(tempDir, slicePath, "devices.allow")
-		listFile := filepath.Join(tempDir, slicePath, "devices.list")
-		denyFile := filepath.Join(tempDir, slicePath, "devices.deny")
-		_, err := os.Create(allowFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(listFile)
-		Expect(err).ToNot(HaveOccurred())
 		err = ioutil.WriteFile(deviceFile, []byte("test"), 0644)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -998,21 +1024,6 @@ var _ = Describe("HotplugVolume volumes", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		deviceFile := filepath.Join(blockDevicePath, "file")
-		slicePath := "slice"
-		m.podIsolationDetector = &mockIsolationDetector{
-			slice: slicePath,
-		}
-		err = os.MkdirAll(filepath.Join(tempDir, slicePath), 0755)
-		Expect(err).ToNot(HaveOccurred())
-		allowFile := filepath.Join(tempDir, slicePath, "devices.allow")
-		listFile := filepath.Join(tempDir, slicePath, "devices.list")
-		denyFile := filepath.Join(tempDir, slicePath, "devices.deny")
-		_, err := os.Create(allowFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(denyFile)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = os.Create(listFile)
-		Expect(err).ToNot(HaveOccurred())
 		err = ioutil.WriteFile(deviceFile, []byte("test"), 0644)
 		Expect(err).ToNot(HaveOccurred())
 
