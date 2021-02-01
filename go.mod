@@ -3,6 +3,7 @@ module kubevirt.io/kubevirt
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/cilium/ebpf v0.0.0-20200702112145-1c8d4c9ef775
 	github.com/containernetworking/plugins v0.8.2
 	github.com/coreos/go-iptables v0.4.3
 	github.com/coreos/go-semver v0.3.0
