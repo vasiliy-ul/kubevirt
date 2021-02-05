@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cilium/ebpf/asm"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	"github.com/opencontainers/runc/libcontainer/cgroups/devices"
 	"github.com/opencontainers/runc/libcontainer/cgroups/ebpf"
@@ -49,10 +50,9 @@ const (
 var (
 	errNoPreciseMatch = errors.New("resulting devices cgroup doesn't precisely match target")
 	errNoMatch        = errors.New("resulting devices cgroup doesn't match target mode")
-
-	isCgroup2UnifiedMode         = cgroups.IsCgroup2UnifiedMode
-	loadAttachCgroupDeviceFilter = ebpf.LoadAttachCgroupDeviceFilter
 )
+
+type attachDeviceFilterFunc = func(insts asm.Instructions, license string, dirFD int) (func() error, error)
 
 func ControllerPath(controller string) string {
 	return controllerPath(cgroups.IsCgroup2UnifiedMode(), cgroupMountPoint, controller)
@@ -219,7 +219,8 @@ func loadEmulator(path string) (*devices.Emulator, error) {
 }
 
 type v2DeviceController struct {
-	closers map[string]func() error
+	closers                      map[string]func() error
+	loadAttachCgroupDeviceFilter attachDeviceFilterFunc
 }
 
 func (v2 *v2DeviceController) UpdateBlockMajorMinor(major, minor int64, path string, allow, skipSafetyCheck bool) error {
@@ -231,7 +232,7 @@ func (v2 *v2DeviceController) UpdateBlockMajorMinor(major, minor int64, path str
 			return fmt.Errorf("Device already whitelisted: %s", key)
 		}
 		deviceRule := newBlockDeviceRule(major, minor, allow)
-		closer, err := attachDeviceFilter(path, deviceRule)
+		closer, err := v2.attachDeviceFilter(path, deviceRule)
 		if err == nil {
 			v2.closers[key] = closer
 		}
@@ -251,7 +252,7 @@ func composeDeviceKey(major, minor int64, path string) string {
 
 // Based on setDevices from
 //  https://github.com/opencontainers/runc/blob/ff819c7e9184c13b7c2607fe6c30ae19403a7aff/libcontainer/cgroups/fs2/devices.go#L40
-func attachDeviceFilter(path string, rule *configs.DeviceRule) (closer func() error, err error) {
+func (v2 *v2DeviceController) attachDeviceFilter(path string, rule *configs.DeviceRule) (closer func() error, err error) {
 	closer = func() error { return nil }
 
 	insts, license, err := devicefilter.DeviceFilter([]*configs.DeviceRule{rule})
@@ -265,13 +266,18 @@ func attachDeviceFilter(path string, rule *configs.DeviceRule) (closer func() er
 	}
 	defer unix.Close(dirFD)
 
-	return loadAttachCgroupDeviceFilter(insts, license, dirFD)
+	return v2.loadAttachCgroupDeviceFilter(insts, license, dirFD)
 }
 
 func NewDeviceController() DeviceController {
-	if isCgroup2UnifiedMode() {
+	return newDeviceController(cgroups.IsCgroup2UnifiedMode(), ebpf.LoadAttachCgroupDeviceFilter)
+}
+
+func newDeviceController(isCgroup2UnifiedMode bool, loadAttachCgroupDeviceFilter attachDeviceFilterFunc) DeviceController {
+	if isCgroup2UnifiedMode {
 		return &v2DeviceController{
-			closers: make(map[string]func() error),
+			closers:                      make(map[string]func() error),
+			loadAttachCgroupDeviceFilter: loadAttachCgroupDeviceFilter,
 		}
 	}
 	return &v1DeviceController{}
