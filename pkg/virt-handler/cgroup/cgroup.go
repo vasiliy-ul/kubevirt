@@ -229,7 +229,7 @@ func (v2 *v2DeviceController) UpdateBlockMajorMinor(major, minor int64, path str
 
 	if allow {
 		if exists {
-			return fmt.Errorf("Device already whitelisted: %s", key)
+			return nil
 		}
 		deviceRule := newBlockDeviceRule(major, minor, allow)
 		closer, err := v2.attachDeviceFilter(path, deviceRule)
@@ -239,7 +239,7 @@ func (v2 *v2DeviceController) UpdateBlockMajorMinor(major, minor int64, path str
 		return err
 	} else {
 		if !exists {
-			return fmt.Errorf("Device is not whitelisted: %s", key)
+			return nil
 		}
 		delete(v2.closers, key)
 		return closer()
