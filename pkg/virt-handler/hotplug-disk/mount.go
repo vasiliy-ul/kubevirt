@@ -293,6 +293,8 @@ func (m *volumeMounter) mountBlockHotplugVolume(vmi *v1.VirtualMachineInstance, 
 
 	deviceName := filepath.Join(targetPath, volume)
 
+	log.DefaultLogger().Errorf("XXX targetPath(%v), deviceName(%v)", targetPath, deviceName)
+
 	if isBlockExists, _ := isBlockDevice(deviceName); !isBlockExists {
 		computeCGroupPath, err := m.getTargetCgroupPath(vmi)
 		if err != nil {
@@ -312,6 +314,8 @@ func (m *volumeMounter) mountBlockHotplugVolume(vmi *v1.VirtualMachineInstance, 
 		if _, err = m.createBlockDeviceFile(deviceName, sourceMajor, sourceMinor, permissions); err != nil {
 			return err
 		}
+
+		log.DefaultLogger().Errorf("XXX1 computeCGroupPath(%v)", computeCGroupPath)
 	} else if isBlockExists && !m.volumeStatusReady(volume, vmi) {
 		// Block device exists already, but the volume is not ready yet, ensure that the device is allowed.
 		computeCGroupPath, err := m.getTargetCgroupPath(vmi)
@@ -325,6 +329,7 @@ func (m *volumeMounter) mountBlockHotplugVolume(vmi *v1.VirtualMachineInstance, 
 		if err := m.allowBlockMajorMinor(sourceMajor, sourceMinor, computeCGroupPath); err != nil {
 			return err
 		}
+		log.DefaultLogger().Errorf("XXX2 computeCGroupPath(%v)", computeCGroupPath)
 	}
 	return nil
 }

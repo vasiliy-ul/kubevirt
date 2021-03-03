@@ -227,11 +227,14 @@ func (v2 *v2DeviceController) UpdateBlockMajorMinor(major, minor int64, path str
 	key := composeDeviceKey(major, minor, path)
 	closer, exists := v2.closers[key]
 
+	deviceRule := newBlockDeviceRule(major, minor, allow)
+
+	//log.Log.Errorf("XXX1 major(%v), minor(%v), path(%v), allow(%v), key(%v), exists(%v), deviceRule(%v)", major, minor, path, allow, key, exists, deviceRule)
+
 	if allow {
 		if exists {
 			return nil
 		}
-		deviceRule := newBlockDeviceRule(major, minor, allow)
 		closer, err := v2.attachDeviceFilter(path, deviceRule)
 		if err == nil {
 			v2.closers[key] = closer
@@ -255,7 +258,15 @@ func composeDeviceKey(major, minor int64, path string) string {
 func (v2 *v2DeviceController) attachDeviceFilter(path string, rule *configs.DeviceRule) (closer func() error, err error) {
 	closer = func() error { return nil }
 
-	insts, license, err := devicefilter.DeviceFilter([]*configs.DeviceRule{rule})
+	ttt := &configs.DeviceRule{
+		Type:        configs.WildcardDevice,
+		Major:       -1,
+		Minor:       -1,
+		Permissions: "rwm",
+		Allow:       true,
+	}
+
+	insts, license, err := devicefilter.DeviceFilter([]*configs.DeviceRule{rule, ttt})
 	if err != nil {
 		return
 	}
