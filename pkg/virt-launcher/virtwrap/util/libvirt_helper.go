@@ -412,10 +412,8 @@ func NewDomainFromName(name string, vmiUID types.UID) *api.Domain {
 	return domain
 }
 
-func SetupLibvirt() (err error) {
-	// TODO: setting permissions and owners is not part of device plugins.
-	// Configure these manually right now on "/dev/kvm"
-	stats, err := os.Stat("/dev/kvm")
+func setDevicePermissions(devicePath string) error {
+	stats, err := os.Stat(devicePath)
 	if err == nil {
 		s, ok := stats.Sys().(*syscall.Stat_t)
 		if !ok {
@@ -429,16 +427,28 @@ func SetupLibvirt() (err error) {
 		if err != nil {
 			return err
 		}
-		err = os.Chown("/dev/kvm", int(s.Uid), gid)
+		err = os.Chown(devicePath, int(s.Uid), gid)
 		if err != nil {
 			return err
 		}
 		// #nosec G302: Poor file permissions used with chmod. Safe to use the common permission setting for the specific system file
-		err = os.Chmod("/dev/kvm", 0660)
+		err = os.Chmod(devicePath, 0660)
 		if err != nil {
 			return err
 		}
 	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func SetupLibvirt() (err error) {
+	// TODO: setting permissions and owners is not part of device plugins.
+	// Configure these manually right now on "/dev/kvm" and "/dev/sev"
+	if err := setDevicePermissions("/dev/kvm"); err != nil {
+		return err
+	}
+	if err := setDevicePermissions("/dev/sev"); err != nil {
 		return err
 	}
 

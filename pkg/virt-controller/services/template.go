@@ -59,6 +59,7 @@ import (
 const KvmDevice = "devices.kubevirt.io/kvm"
 const TunDevice = "devices.kubevirt.io/tun"
 const VhostNetDevice = "devices.kubevirt.io/vhost-net"
+const SevDevice = "devices.kubevirt.io/sev"
 
 const debugLogs = "debugLogs"
 const logVerbosity = "logVerbosity"
@@ -1033,6 +1034,12 @@ func (t *templateService) renderLaunchManifest(vmi *v1.VirtualMachineInstance, t
 		for _, hostDev := range vmi.Spec.Domain.Devices.HostDevices {
 			requestResource(&resources, hostDev.DeviceName)
 		}
+	}
+
+	if util.IsSEVVMI(vmi) {
+		// privileged is required for memory locking
+		privileged = true
+		requestResource(&resources, SevDevice)
 	}
 
 	// VirtualMachineInstance target container
