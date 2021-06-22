@@ -200,6 +200,7 @@ func ValidateVirtualMachineInstanceSpec(field *k8sfield.Path, spec *v1.VirtualMa
 	causes = append(causes, validateFilesystemsWithVirtIOFSEnabled(field, spec, config)...)
 	causes = append(causes, validateHostDevicesWithPassthroughEnabled(field, spec, config)...)
 	causes = append(causes, validatePermittedHostDevices(field, spec, config)...)
+	causes = append(causes, validateLaunchSecurityEnabled(field, spec, config)...)
 	return causes
 }
 
@@ -784,6 +785,17 @@ func validatePermittedHostDevices(field *k8sfield.Path, spec *v1.VirtualMachineI
 				})
 			}
 		}
+	}
+	return causes
+}
+
+func validateLaunchSecurityEnabled(field *k8sfield.Path, spec *v1.VirtualMachineInstanceSpec, config *virtconfig.ClusterConfig) (causes []metav1.StatusCause) {
+	if spec.Domain.LaunchSecurity != nil && !config.LaunchSecurityEnabled() {
+		causes = append(causes, metav1.StatusCause{
+			Type:    metav1.CauseTypeFieldValueInvalid,
+			Message: fmt.Sprintf("LaunchSecurity feature gate is not enabled in kubevirt-config"),
+			Field:   field.Child("launchSecurity").String(),
+		})
 	}
 	return causes
 }

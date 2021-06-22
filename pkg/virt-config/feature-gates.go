@@ -40,6 +40,7 @@ const (
 	VirtIOFSGate               = "ExperimentalVirtiofsSupport"
 	MacvtapGate                = "Macvtap"
 	DownwardMetricsFeatureGate = "DownwardMetrics"
+	LaunchSecurityGate         = "LaunchSecurity"
 )
 
 func (c *ClusterConfig) isFeatureGateEnabled(featureGate string) bool {
@@ -110,4 +111,8 @@ func (config *ClusterConfig) MacvtapEnabled() bool {
 
 func (config *ClusterConfig) HostDevicesPassthroughEnabled() bool {
 	return config.isFeatureGateEnabled(HostDevicesGate)
+}
+
+func (config *ClusterConfig) LaunchSecurityEnabled() bool {
+	return config.isFeatureGateEnabled(LaunchSecurityGate)
 }
