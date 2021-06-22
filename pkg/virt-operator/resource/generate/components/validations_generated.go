@@ -4306,6 +4306,29 @@ var CRDsValidation map[string]string = map[string]string{
                         Omitting IOThreadsPolicy disables use of IOThreads. One of:
                         shared, auto'
                       type: string
+                    launchSecurity:
+                      description: Launch Security setting of the vmi.
+                      properties:
+                        sev:
+                          description: AMD Secure Encrypted Virtualization (SEV)
+                          properties:
+                            cbitpos:
+                              description: CBit Position
+                              type: integer
+                            policy:
+                              description: Guest SEV policy
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: set
+                            reducedPhysBits:
+                              description: No. of physical bits in address space
+                              type: integer
+                          required:
+                          - cbitpos
+                          - reducedPhysBits
+                          type: object
+                      type: object
                     machine:
                       description: Machine type.
                       properties:
@@ -6922,6 +6945,29 @@ var CRDsValidation map[string]string = map[string]string{
               description: 'Controls whether or not disks will share IOThreads. Omitting
                 IOThreadsPolicy disables use of IOThreads. One of: shared, auto'
               type: string
+            launchSecurity:
+              description: Launch Security setting of the vmi.
+              properties:
+                sev:
+                  description: AMD Secure Encrypted Virtualization (SEV)
+                  properties:
+                    cbitpos:
+                      description: CBit Position
+                      type: integer
+                    policy:
+                      description: Guest SEV policy
+                      items:
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
+                    reducedPhysBits:
+                      description: No. of physical bits in address space
+                      type: integer
+                  required:
+                  - cbitpos
+                  - reducedPhysBits
+                  type: object
+              type: object
             machine:
               description: Machine type.
               properties:
@@ -8831,6 +8877,29 @@ var CRDsValidation map[string]string = map[string]string{
               description: 'Controls whether or not disks will share IOThreads. Omitting
                 IOThreadsPolicy disables use of IOThreads. One of: shared, auto'
               type: string
+            launchSecurity:
+              description: Launch Security setting of the vmi.
+              properties:
+                sev:
+                  description: AMD Secure Encrypted Virtualization (SEV)
+                  properties:
+                    cbitpos:
+                      description: CBit Position
+                      type: integer
+                    policy:
+                      description: Guest SEV policy
+                      items:
+                        type: string
+                      type: array
+                      x-kubernetes-list-type: set
+                    reducedPhysBits:
+                      description: No. of physical bits in address space
+                      type: integer
+                  required:
+                  - cbitpos
+                  - reducedPhysBits
+                  type: object
+              type: object
             machine:
               description: Machine type.
               properties:
@@ -10621,6 +10690,29 @@ var CRDsValidation map[string]string = map[string]string{
                         Omitting IOThreadsPolicy disables use of IOThreads. One of:
                         shared, auto'
                       type: string
+                    launchSecurity:
+                      description: Launch Security setting of the vmi.
+                      properties:
+                        sev:
+                          description: AMD Secure Encrypted Virtualization (SEV)
+                          properties:
+                            cbitpos:
+                              description: CBit Position
+                              type: integer
+                            policy:
+                              description: Guest SEV policy
+                              items:
+                                type: string
+                              type: array
+                              x-kubernetes-list-type: set
+                            reducedPhysBits:
+                              description: No. of physical bits in address space
+                              type: integer
+                          required:
+                          - cbitpos
+                          - reducedPhysBits
+                          type: object
+                      type: object
                     machine:
                       description: Machine type.
                       properties:
@@ -14072,6 +14164,31 @@ var CRDsValidation map[string]string = map[string]string{
                                     share IOThreads. Omitting IOThreadsPolicy disables
                                     use of IOThreads. One of: shared, auto'
                                   type: string
+                                launchSecurity:
+                                  description: Launch Security setting of the vmi.
+                                  properties:
+                                    sev:
+                                      description: AMD Secure Encrypted Virtualization
+                                        (SEV)
+                                      properties:
+                                        cbitpos:
+                                          description: CBit Position
+                                          type: integer
+                                        policy:
+                                          description: Guest SEV policy
+                                          items:
+                                            type: string
+                                          type: array
+                                          x-kubernetes-list-type: set
+                                        reducedPhysBits:
+                                          description: No. of physical bits in address
+                                            space
+                                          type: integer
+                                      required:
+                                      - cbitpos
+                                      - reducedPhysBits
+                                      type: object
+                                  type: object
                                 machine:
                                   description: Machine type.
                                   properties:

@@ -368,6 +368,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"kubevirt.io/client-go/api/v1.KubeVirtSpec":                                          schema_kubevirtio_client_go_api_v1_KubeVirtSpec(ref),
 		"kubevirt.io/client-go/api/v1.KubeVirtStatus":                                        schema_kubevirtio_client_go_api_v1_KubeVirtStatus(ref),
 		"kubevirt.io/client-go/api/v1.KubeVirtWorkloadUpdateStrategy":                        schema_kubevirtio_client_go_api_v1_KubeVirtWorkloadUpdateStrategy(ref),
+		"kubevirt.io/client-go/api/v1.LaunchSecurity":                                        schema_kubevirtio_client_go_api_v1_LaunchSecurity(ref),
 		"kubevirt.io/client-go/api/v1.LogVerbosity":                                          schema_kubevirtio_client_go_api_v1_LogVerbosity(ref),
 		"kubevirt.io/client-go/api/v1.LunTarget":                                             schema_kubevirtio_client_go_api_v1_LunTarget(ref),
 		"kubevirt.io/client-go/api/v1.Machine":                                               schema_kubevirtio_client_go_api_v1_Machine(ref),
@@ -392,6 +393,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"kubevirt.io/client-go/api/v1.ResourceRequirements":                                  schema_kubevirtio_client_go_api_v1_ResourceRequirements(ref),
 		"kubevirt.io/client-go/api/v1.RestartOptions":                                        schema_kubevirtio_client_go_api_v1_RestartOptions(ref),
 		"kubevirt.io/client-go/api/v1.Rng":                                                   schema_kubevirtio_client_go_api_v1_Rng(ref),
+		"kubevirt.io/client-go/api/v1.SEV":                                                   schema_kubevirtio_client_go_api_v1_SEV(ref),
 		"kubevirt.io/client-go/api/v1.SMBiosConfiguration":                                   schema_kubevirtio_client_go_api_v1_SMBiosConfiguration(ref),
 		"kubevirt.io/client-go/api/v1.SSHPublicKeyAccessCredential":                          schema_kubevirtio_client_go_api_v1_SSHPublicKeyAccessCredential(ref),
 		"kubevirt.io/client-go/api/v1.SSHPublicKeyAccessCredentialPropagationMethod":         schema_kubevirtio_client_go_api_v1_SSHPublicKeyAccessCredentialPropagationMethod(ref),
@@ -15169,12 +15171,18 @@ func schema_kubevirtio_client_go_api_v1_DomainSpec(ref common.ReferenceCallback)
 							Ref:         ref("kubevirt.io/client-go/api/v1.Chassis"),
 						},
 					},
+					"launchSecurity": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Launch Security setting of the vmi.",
+							Ref:         ref("kubevirt.io/client-go/api/v1.LaunchSecurity"),
+						},
+					},
 				},
 				Required: []string{"devices"},
 			},
 		},
 		Dependencies: []string{
-			"kubevirt.io/client-go/api/v1.CPU", "kubevirt.io/client-go/api/v1.Chassis", "kubevirt.io/client-go/api/v1.Clock", "kubevirt.io/client-go/api/v1.Devices", "kubevirt.io/client-go/api/v1.Features", "kubevirt.io/client-go/api/v1.Firmware", "kubevirt.io/client-go/api/v1.Machine", "kubevirt.io/client-go/api/v1.Memory", "kubevirt.io/client-go/api/v1.ResourceRequirements"},
+			"kubevirt.io/client-go/api/v1.CPU", "kubevirt.io/client-go/api/v1.Chassis", "kubevirt.io/client-go/api/v1.Clock", "kubevirt.io/client-go/api/v1.Devices", "kubevirt.io/client-go/api/v1.Features", "kubevirt.io/client-go/api/v1.Firmware", "kubevirt.io/client-go/api/v1.LaunchSecurity", "kubevirt.io/client-go/api/v1.Machine", "kubevirt.io/client-go/api/v1.Memory", "kubevirt.io/client-go/api/v1.ResourceRequirements"},
 	}
 }
 
@@ -16942,6 +16950,26 @@ func schema_kubevirtio_client_go_api_v1_KubeVirtWorkloadUpdateStrategy(ref commo
 	}
 }
 
+func schema_kubevirtio_client_go_api_v1_LaunchSecurity(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"sev": {
+						SchemaProps: spec.SchemaProps{
+							Description: "AMD Secure Encrypted Virtualization (SEV)",
+							Ref:         ref("kubevirt.io/client-go/api/v1.SEV"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"kubevirt.io/client-go/api/v1.SEV"},
+	}
+}
+
 func schema_kubevirtio_client_go_api_v1_LogVerbosity(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -17769,6 +17797,52 @@ func schema_kubevirtio_client_go_api_v1_Rng(ref common.ReferenceCallback) common
 			SchemaProps: spec.SchemaProps{
 				Description: "Rng represents the random device passed from host",
 				Type:        []string{"object"},
+			},
+		},
+	}
+}
+
+func schema_kubevirtio_client_go_api_v1_SEV(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"cbitpos": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CBit Position",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"reducedPhysBits": {
+						SchemaProps: spec.SchemaProps{
+							Description: "No. of physical bits in address space",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+					"policy": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "set",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Description: "Guest SEV policy",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Type:   []string{"string"},
+										Format: "",
+									},
+								},
+							},
+						},
+					},
+				},
+				Required: []string{"cbitpos", "reducedPhysBits"},
 			},
 		},
 	}
