@@ -63,6 +63,11 @@ func IsVFIOVMI(vmi *v1.VirtualMachineInstance) bool {
 	return false
 }
 
+// Check if a VMI spec requests AMD SEV
+func IsSEVVMI(vmi *v1.VirtualMachineInstance) bool {
+	return vmi.Spec.Domain.LaunchSecurity != nil && vmi.Spec.Domain.LaunchSecurity.SEV != nil
+}
+
 func ResourceNameToEnvVar(prefix string, resourceName string) string {
 	varName := strings.ToUpper(resourceName)
 	varName = strings.Replace(varName, "/", "_", -1)

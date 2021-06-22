@@ -119,6 +119,18 @@ func createDomainInterfaces(vmi *v1.VirtualMachineInstance, domain *api.Domain, 
 				domainIface.Rom = &api.Rom{Enabled: "no"}
 			}
 		}
+
+		if ifaceType == "virtio" && c.UseLaunchSecurity {
+			if domainIface.Rom != nil && domainIface.Rom.Enabled != "no" {
+				return nil, fmt.Errorf("%s: Rom.Enabled = '%s' not allowed with launch security", iface.Name, domainIface.Rom.Enabled)
+			}
+			domainIface.Rom = &api.Rom{Enabled: "no"}
+			if domainIface.Driver != nil {
+				domainIface.Driver.IOMMU = "on"
+			} else {
+				domainIface.Driver = &api.InterfaceDriver{Name: "vhost", IOMMU: "on"}
+			}
+		}
 		domainInterfaces = append(domainInterfaces, domainIface)
 	}
 
