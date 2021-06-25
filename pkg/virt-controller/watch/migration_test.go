@@ -186,6 +186,7 @@ var _ = Describe("Migration watcher", func() {
 			podInformer,
 			migrationInformer,
 			nodeInformer,
+			pvcInformer,
 			recorder,
 			virtClient,
 			config,
