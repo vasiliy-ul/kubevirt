@@ -7,6 +7,12 @@ metadata:
   name: vmi-ephemeral
 spec:
   domain:
+    launchSecurity:
+      sev:
+        cbitpos: 0x1
+        reducedPhysBits: 47
+        policy:
+          - NoDebug
     devices:
       disks:
       - disk:

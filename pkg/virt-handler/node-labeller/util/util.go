@@ -29,6 +29,7 @@ const (
 	RequirePolicy                                = "require"
 	KVMPath                                      = "/dev/kvm"
 	VmxFeature                                   = "vmx"
+	SEVPath                                      = "/dev/sev"
 )
 
 var DefaultObsoleteCPUModels = map[string]bool{
