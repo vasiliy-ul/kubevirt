@@ -14734,7 +14734,13 @@
     "type": "object"
    },
    "v1.SEV": {
-    "type": "object"
+    "type": "object",
+    "properties": {
+     "preAttestation": {
+      "description": "Run attestation before launching the vmi. Defaults to false.",
+      "type": "boolean"
+     }
+    }
    },
    "v1.SMBiosConfiguration": {
     "type": "object",

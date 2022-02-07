@@ -356,7 +356,9 @@ func (LaunchSecurity) SwaggerDoc() map[string]string {
 }
 
 func (SEV) SwaggerDoc() map[string]string {
-	return map[string]string{}
+	return map[string]string{
+		"preAttestation": "Run attestation before launching the vmi.\nDefaults to false.",
+	}
 }
 
 func (LunTarget) SwaggerDoc() map[string]string {

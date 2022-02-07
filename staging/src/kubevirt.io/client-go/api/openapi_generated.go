@@ -18998,6 +18998,15 @@ func schema_kubevirtio_api_core_v1_SEV(ref common.ReferenceCallback) common.Open
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"preAttestation": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Run attestation before launching the vmi. Defaults to false.",
+							Type:        []string{"boolean"},
+							Format:      "",
+						},
+					},
+				},
 			},
 		},
 	}

@@ -616,6 +616,9 @@ type LaunchSecurity struct {
 }
 
 type SEV struct {
+	// Run attestation before launching the vmi.
+	// Defaults to false.
+	PreAttestation bool `json:"preAttestation,omitempty"`
 }
 
 type LunTarget struct {
