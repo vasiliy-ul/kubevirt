@@ -741,3 +741,11 @@ func (FlavorMatcher) SwaggerDoc() map[string]string {
 		"profile": "Profile is the name of a custom profile in the flavor. If left empty, the default profile is used.\n+optional",
 	}
 }
+
+func (SEVPlatformInfo) SwaggerDoc() map[string]string {
+	return map[string]string{
+		"":          "SEVPlatformInfo contains information about the AMD SEV features for the node.\n\n+k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object",
+		"pdh":       "Base64 encoded platform Diffie-Hellman key.",
+		"certChain": "Base64 encoded SEV certificate chain.",
+	}
+}

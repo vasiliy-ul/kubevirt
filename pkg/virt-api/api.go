@@ -458,6 +458,17 @@ func (app *virtAPIApp) composeSubresources() {
 			Returns(http.StatusOK, "OK", "").
 			Returns(http.StatusBadRequest, httpStatusBadRequestMessage, ""))
 
+		// AMD SEV endpoints
+		subws.Route(subws.GET(rest.NamespacedResourcePath(subresourcesvmiGVR)+rest.SubResourcePath("sev/fetchcertchain")).
+			To(subresourceApp.SEVFetchCertChainRequestHandler).
+			Param(rest.NamespaceParam(subws)).Param(rest.NameParam(subws)).
+			Consumes(restful.MIME_JSON).
+			Produces(restful.MIME_JSON).
+			Operation(version.Version+"SEVFetchCertChain").
+			Doc("Fetch SEV certificate chain from the node where Virtual Machine is scheduled").
+			Writes(v1.SEVPlatformInfo{}).
+			Returns(http.StatusOK, "OK", v1.SEVPlatformInfo{}))
+
 		// Return empty api resource list.
 		// K8s expects to be able to retrieve a resource list for each aggregated
 		// app in order to discover what resources it provides. Without returning
@@ -538,6 +549,10 @@ func (app *virtAPIApp) composeSubresources() {
 					},
 					{
 						Name:       "virtualmachineinstances/removevolume",
+						Namespaced: true,
+					},
+					{
+						Name:       "virtualmachineinstances/sev/fetchcertchain",
 						Namespaced: true,
 					},
 				}

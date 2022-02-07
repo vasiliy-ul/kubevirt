@@ -280,3 +280,14 @@ func (_m *MockDomainManager) GuestPing(_param0 string) error {
 func (_mr *_MockDomainManagerRecorder) GuestPing(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GuestPing", arg0)
 }
+
+func (_m *MockDomainManager) GetSEVInfo() (*v1.SEVPlatformInfo, error) {
+	ret := _m.ctrl.Call(_m, "GetSEVInfo")
+	ret0, _ := ret[0].(*v1.SEVPlatformInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockDomainManagerRecorder) GetSEVInfo() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSEVInfo")
+}

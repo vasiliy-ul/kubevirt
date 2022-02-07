@@ -471,3 +471,10 @@ func (v *vmis) RemoveVolume(name string, removeVolumeOptions *v1.RemoveVolumeOpt
 
 	return v.restClient.Put().RequestURI(uri).Body([]byte(JSON)).Do(context.Background()).Error()
 }
+
+func (v *vmis) SEVFetchCertChain(name string) (v1.SEVPlatformInfo, error) {
+	sevPlatformInfo := v1.SEVPlatformInfo{}
+	uri := fmt.Sprintf(vmiSubresourceURL, v1.ApiStorageVersion, v.namespace, name, "sev/fetchcertchain")
+	err := v.restClient.Get().RequestURI(uri).Do(context.Background()).Into(&sevPlatformInfo)
+	return sevPlatformInfo, err
+}

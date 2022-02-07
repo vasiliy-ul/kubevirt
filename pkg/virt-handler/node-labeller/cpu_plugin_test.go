@@ -170,8 +170,10 @@ var _ = Describe("Node-labeller config", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(nlController.SEV.Supported).To(Equal("yes"))
-			Expect(nlController.SEV.Cbitpos).To(Equal("47"))
-			Expect(nlController.SEV.ReducedPhysBits).To(Equal("1"))
+			Expect(nlController.SEV.CBitPos).To(Equal(uint(47)))
+			Expect(nlController.SEV.ReducedPhysBits).To(Equal(uint(1)))
+			Expect(nlController.SEV.MaxGuests).To(Equal(uint(15)))
+			Expect(nlController.SEV.MaxESGuests).To(Equal(uint(100)))
 		})
 
 		It("when SEV is not supported", func() {
@@ -180,8 +182,10 @@ var _ = Describe("Node-labeller config", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(nlController.SEV.Supported).To(Equal("no"))
-			Expect(nlController.SEV.Cbitpos).To(BeEmpty())
-			Expect(nlController.SEV.ReducedPhysBits).To(BeEmpty())
+			Expect(nlController.SEV.CBitPos).To(BeZero())
+			Expect(nlController.SEV.ReducedPhysBits).To(BeZero())
+			Expect(nlController.SEV.MaxGuests).To(BeZero())
+			Expect(nlController.SEV.MaxESGuests).To(BeZero())
 		})
 	})
 })

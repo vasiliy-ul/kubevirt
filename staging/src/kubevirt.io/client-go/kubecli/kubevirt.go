@@ -213,6 +213,7 @@ type VirtualMachineInstanceInterface interface {
 	FilesystemList(name string) (v1.VirtualMachineInstanceFileSystemList, error)
 	AddVolume(name string, addVolumeOptions *v1.AddVolumeOptions) error
 	RemoveVolume(name string, removeVolumeOptions *v1.RemoveVolumeOptions) error
+	SEVFetchCertChain(name string) (v1.SEVPlatformInfo, error)
 }
 
 type ReplicaSetInterface interface {

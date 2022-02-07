@@ -138,6 +138,11 @@ type InterfaceStatus struct {
 	InterfaceName string
 }
 
+type SEVNodeParameters struct {
+	PDH       string
+	CertChain string
+}
+
 type Timezone struct {
 	Zone   string
 	Offset int

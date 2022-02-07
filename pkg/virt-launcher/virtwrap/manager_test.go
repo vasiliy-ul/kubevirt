@@ -917,6 +917,21 @@ var _ = Describe("Manager", func() {
 			Expect(err).To(BeNil())
 			Expect(newspec).ToNot(BeNil())
 		})
+
+		It("should return SEV platform info", func() {
+			sevNodeParameters := &api.SEVNodeParameters{
+				PDH:       "AAABBBCCC",
+				CertChain: "DDDEEEFFF",
+			}
+
+			mockConn.EXPECT().GetSEVInfo().Return(sevNodeParameters, nil)
+
+			manager, _ := NewLibvirtDomainManager(mockConn, testVirtShareDir, nil, "/usr/share/OVMF", ephemeralDiskCreatorMock)
+			sevPlatfomrInfo, err := manager.GetSEVInfo()
+			Expect(err).To(BeNil())
+			Expect(sevPlatfomrInfo.PDH).To(Equal(sevNodeParameters.PDH))
+			Expect(sevPlatfomrInfo.CertChain).To(Equal(sevNodeParameters.CertChain))
+		})
 	})
 	Context("test marking graceful shutdown", func() {
 		It("Should set metadata when calling MarkGracefulShutdown api", func() {

@@ -328,6 +328,22 @@ var _ = Describe("Kubevirt VirtualMachineInstance Client", func() {
 		Expect(fetchedInfo).To(Equal(fileSystemList), "fetched info should be the same as passed in")
 	})
 
+	It("should fetch SEV platform info via subresource", func() {
+		sevPlatformIfo := v1.SEVPlatformInfo{
+			PDH:       "AAABBB",
+			CertChain: "CCCDDD",
+		}
+
+		server.AppendHandlers(ghttp.CombineHandlers(
+			ghttp.VerifyRequest("GET", path.Join(subVMPath, "sev/fetchcertchain")),
+			ghttp.RespondWithJSONEncoded(http.StatusOK, sevPlatformIfo),
+		))
+		fetchedInfo, err := client.VirtualMachineInstance(k8sv1.NamespaceDefault).SEVFetchCertChain("testvm")
+
+		Expect(err).ToNot(HaveOccurred(), "should fetch info normally")
+		Expect(fetchedInfo).To(Equal(sevPlatformIfo), "fetched info should be the same as passed in")
+	})
+
 	AfterEach(func() {
 		server.Close()
 	})

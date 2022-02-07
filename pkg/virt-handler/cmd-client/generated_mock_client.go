@@ -279,3 +279,14 @@ func (_m *MockLauncherClient) Close() {
 func (_mr *_MockLauncherClientRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
+
+func (_m *MockLauncherClient) GetSEVInfo() (*v1.SEVPlatformInfo, error) {
+	ret := _m.ctrl.Call(_m, "GetSEVInfo")
+	ret0, _ := ret[0].(*v1.SEVPlatformInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockLauncherClientRecorder) GetSEVInfo() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSEVInfo")
+}

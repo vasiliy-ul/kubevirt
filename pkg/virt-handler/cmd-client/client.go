@@ -101,6 +101,7 @@ type LauncherClient interface {
 	Ping() error
 	GuestPing(string, int32) error
 	Close()
+	GetSEVInfo() (*v1.SEVPlatformInfo, error)
 }
 
 type VirtLauncherClient struct {
@@ -712,4 +713,23 @@ func (c *VirtLauncherClient) GuestPing(domainName string, timeoutSeconds int32) 
 
 	_, err := c.v1client.GuestPing(ctx, request)
 	return err
+}
+
+func (c *VirtLauncherClient) GetSEVInfo() (*v1.SEVPlatformInfo, error) {
+	request := &cmdv1.EmptyRequest{}
+	ctx, cancel := context.WithTimeout(context.Background(), shortTimeout)
+	defer cancel()
+
+	sevInfoResponse, err := c.v1client.GetSEVInfo(ctx, request)
+	if err = handleError(err, "GetSEVInfo", sevInfoResponse.GetResponse()); err != nil {
+		return nil, err
+	}
+
+	sevPlatformInfo := &v1.SEVPlatformInfo{}
+	if err := json.Unmarshal(sevInfoResponse.GetSevInfo(), sevPlatformInfo); err != nil {
+		log.Log.Reason(err).Error("error unmarshalling SEV info response")
+		return nil, err
+	}
+
+	return sevPlatformInfo, nil
 }

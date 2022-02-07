@@ -133,6 +133,7 @@ type DomainManager interface {
 	GetGuestOSInfo() *api.GuestOSInfo
 	Exec(string, string, []string, int32) (string, error)
 	GuestPing(string) error
+	GetSEVInfo() (*v1.SEVPlatformInfo, error)
 }
 
 type LibvirtDomainManager struct {
@@ -1756,6 +1757,19 @@ func (l *LibvirtDomainManager) GetFilesystems() ([]v1.VirtualMachineInstanceFile
 	}
 
 	return fsList, nil
+}
+
+func (l *LibvirtDomainManager) GetSEVInfo() (*v1.SEVPlatformInfo, error) {
+	sevNodeParameters, err := l.virConn.GetSEVInfo()
+	if err != nil {
+		log.Log.Reason(err).Error("Getting SEV platform info failed")
+		return nil, err
+	}
+
+	return &v1.SEVPlatformInfo{
+		PDH:       sevNodeParameters.PDH,
+		CertChain: sevNodeParameters.CertChain,
+	}, nil
 }
 
 // check whether VMI has a certain condition

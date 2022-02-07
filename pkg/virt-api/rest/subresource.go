@@ -46,6 +46,7 @@ import (
 	"kubevirt.io/client-go/kubecli"
 	"kubevirt.io/client-go/log"
 	"kubevirt.io/kubevirt/pkg/controller"
+	"kubevirt.io/kubevirt/pkg/util"
 	virtconfig "kubevirt.io/kubevirt/pkg/virt-config"
 )
 
@@ -57,8 +58,10 @@ const (
 	patchingVMStatusFmt          = "Patching VM status: %s"
 	vmiNotRunning                = "VMI is not running"
 	vmiGuestAgentErr             = "VMI does not have guest agent connected"
+	vmiNoAttestation             = "Pre-attestation not requested for VMI"
 	prepConnectionErrFmt         = "Cannot prepare connection %s"
 	getRequestErrFmt             = "Cannot GET request %s"
+	featureGateDisabledFmt       = "'%s' feature gate is not enabled"
 	defaultProfilerComponentPort = 8443
 )
 
@@ -170,8 +173,8 @@ func getTargetInterfaceIP(vmi *v1.VirtualMachineInstance) (string, error) {
 }
 
 func (app *SubresourceAPIApp) getVirtHandlerConnForVMI(vmi *v1.VirtualMachineInstance) (kubecli.VirtHandlerConn, error) {
-	if !vmi.IsRunning() {
-		return nil, goerror.New(fmt.Sprintf("Unable to connect to VirtualMachineInstance because phase is %s instead of %s", vmi.Status.Phase, v1.Running))
+	if !vmi.IsRunning() && !vmi.IsScheduled() {
+		return nil, goerror.New(fmt.Sprintf("Unable to connect to VirtualMachineInstance because phase is %s instead of %s or %s", vmi.Status.Phase, v1.Running, v1.Scheduled))
 	}
 	return kubecli.NewVirtHandlerClient(app.virtCli).Port(app.consoleServerPort).ForNode(vmi.Status.NodeName), nil
 }
@@ -1258,4 +1261,27 @@ func (app *SubresourceAPIApp) VMIAddVolumeRequestHandler(request *restful.Reques
 // VMIRemoveVolumeRequestHandler handles the subresource for hot plugging a volume and disk.
 func (app *SubresourceAPIApp) VMIRemoveVolumeRequestHandler(request *restful.Request, response *restful.Response) {
 	app.removeVolumeRequestHandler(request, response, true)
+}
+
+func (app *SubresourceAPIApp) SEVFetchCertChainRequestHandler(request *restful.Request, response *restful.Response) {
+	if !app.clusterConfig.WorkloadEncryptionSEVEnabled() {
+		writeError(errors.NewBadRequest(fmt.Sprintf(featureGateDisabledFmt, virtconfig.WorkloadEncryptionSEV)), response)
+		return
+	}
+
+	validate := func(vmi *v1.VirtualMachineInstance) *errors.StatusError {
+		if !vmi.IsScheduled() && !vmi.IsRunning() {
+			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNotRunning))
+		}
+		if !util.IsPreAttestationRequested(vmi) {
+			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNoAttestation))
+		}
+		return nil
+	}
+
+	getURL := func(vmi *v1.VirtualMachineInstance, conn kubecli.VirtHandlerConn) (string, error) {
+		return conn.SEVFetchCertChainURI(vmi)
+	}
+
+	app.httpGetRequestHandler(request, response, validate, getURL, v1.SEVPlatformInfo{})
 }
