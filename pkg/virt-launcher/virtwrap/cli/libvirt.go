@@ -503,6 +503,7 @@ type VirDomain interface {
 	IsPersistent() (bool, error)
 	AbortJob() error
 	Free() error
+	GetLaunchSecurityInfo(flags uint32) (*libvirt.DomainLaunchSecurityParameters, error)
 }
 
 func NewConnection(uri string, user string, pass string, checkInterval time.Duration) (Connection, error) {

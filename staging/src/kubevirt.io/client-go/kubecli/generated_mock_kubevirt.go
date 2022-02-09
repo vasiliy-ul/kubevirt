@@ -1137,6 +1137,17 @@ func (_mr *_MockVirtualMachineInstanceInterfaceRecorder) SEVFetchCertChain(arg0 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SEVFetchCertChain", arg0)
 }
 
+func (_m *MockVirtualMachineInstanceInterface) SEVQueryLaunchMeasurement(name string) (v119.SEVMeasurementInfo, error) {
+	ret := _m.ctrl.Call(_m, "SEVQueryLaunchMeasurement", name)
+	ret0, _ := ret[0].(v119.SEVMeasurementInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockVirtualMachineInstanceInterfaceRecorder) SEVQueryLaunchMeasurement(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SEVQueryLaunchMeasurement", arg0)
+}
+
 // Mock of ReplicaSetInterface interface
 type MockReplicaSetInterface struct {
 	ctrl     *gomock.Controller

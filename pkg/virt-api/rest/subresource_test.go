@@ -1826,6 +1826,33 @@ var _ = Describe("VirtualMachineInstance Subresources", func() {
 			Expect(response.Error()).To(HaveOccurred())
 			Expect(response.StatusCode()).To(Equal(http.StatusInternalServerError))
 		})
+
+		It("Should allow to query launch measurement when VMI with requested pre-attestation is paused", func() {
+			backend.AppendHandlers(
+				ghttp.CombineHandlers(
+					ghttp.VerifyRequest("GET", "/v1/namespaces/default/virtualmachineinstances/testvmi/sev/querylaunchmeasurement"),
+					ghttp.RespondWithJSONEncoded(http.StatusOK, v1.SEVMeasurementInfo{}),
+				),
+			)
+			response.SetRequestAccepts(restful.MIME_JSON)
+
+			expectVMI(Running, Paused, withPreAttestation)
+			app.SEVQueryLaunchMeasurementHandler(request, response)
+			Expect(response.Error()).ToNot(HaveOccurred())
+			Expect(response.StatusCode()).To(Equal(http.StatusOK))
+		})
+
+		table.DescribeTable("Should fail to query launch measurement",
+			func(running, paused bool, vmiWarpFunctions ...func(vmi *v1.VirtualMachineInstance)) {
+				expectVMI(running, paused, vmiWarpFunctions...)
+				app.SEVQueryLaunchMeasurementHandler(request, response)
+				Expect(response.Error()).To(HaveOccurred())
+				Expect(response.StatusCode()).To(Equal(http.StatusInternalServerError))
+			},
+			table.Entry("when VMI is not running", NotRunning, Paused, withPreAttestation),
+			table.Entry("when VMI is not paused", Running, UnPaused, withPreAttestation),
+			table.Entry("when pre-attestation is not requested ", Running, Paused),
+		)
 	})
 
 	AfterEach(func() {

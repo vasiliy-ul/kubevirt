@@ -102,6 +102,7 @@ type LauncherClient interface {
 	GuestPing(string, int32) error
 	Close()
 	GetSEVInfo() (*v1.SEVPlatformInfo, error)
+	GetLaunchMeasurement(*v1.VirtualMachineInstance) (*v1.SEVMeasurementInfo, error)
 }
 
 type VirtLauncherClient struct {
@@ -732,4 +733,33 @@ func (c *VirtLauncherClient) GetSEVInfo() (*v1.SEVPlatformInfo, error) {
 	}
 
 	return sevPlatformInfo, nil
+}
+
+func (c *VirtLauncherClient) GetLaunchMeasurement(vmi *v1.VirtualMachineInstance) (*v1.SEVMeasurementInfo, error) {
+	vmiJson, err := json.Marshal(vmi)
+	if err != nil {
+		return nil, err
+	}
+
+	request := &cmdv1.VMIRequest{
+		Vmi: &cmdv1.VMI{
+			VmiJson: vmiJson,
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), shortTimeout)
+	defer cancel()
+
+	launchMeasurementRespose, err := c.v1client.GetLaunchMeasurement(ctx, request)
+	if err = handleError(err, "GetLaunchMeasurement", launchMeasurementRespose.GetResponse()); err != nil {
+		return nil, err
+	}
+
+	sevMeasurementInfo := &v1.SEVMeasurementInfo{}
+	if err := json.Unmarshal(launchMeasurementRespose.GetLaunchMeasurement(), sevMeasurementInfo); err != nil {
+		log.Log.Reason(err).Error("error unmarshalling launch measurement response")
+		return nil, err
+	}
+
+	return sevMeasurementInfo, nil
 }

@@ -370,3 +370,37 @@ func (lh *LifecycleHandler) SEVFetchCertChainHandler(request *restful.Request, r
 
 	response.WriteEntity(sevPlatformInfo)
 }
+
+func (lh *LifecycleHandler) SEVQueryLaunchMeasurementHandler(request *restful.Request, response *restful.Response) {
+	vmi, code, err := getVMI(request, lh.vmiInformer)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedRetrieveVMI)
+		response.WriteError(code, err)
+		return
+	}
+
+	sockFile, err := cmdclient.FindSocketOnHost(vmi)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedDetectCmdClient)
+		response.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	client, err := cmdclient.NewClient(sockFile)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedConnectCmdClient)
+		response.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	log.Log.Object(vmi).Infof("Retreiving SEV launch measurement")
+
+	sevMeasurementInfo, err := client.GetLaunchMeasurement(vmi)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error("Failed to get VMI launch measurement")
+		response.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	response.WriteEntity(sevMeasurementInfo)
+}

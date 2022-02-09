@@ -20,6 +20,7 @@
 package virtwrap
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
@@ -55,6 +56,7 @@ import (
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/api"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/cli"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/converter"
+	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/efi"
 	"kubevirt.io/kubevirt/pkg/virt-launcher/virtwrap/stats"
 )
 
@@ -931,6 +933,32 @@ var _ = Describe("Manager", func() {
 			Expect(err).To(BeNil())
 			Expect(sevPlatfomrInfo.PDH).To(Equal(sevNodeParameters.PDH))
 			Expect(sevPlatfomrInfo.CertChain).To(Equal(sevNodeParameters.CertChain))
+		})
+
+		It("should return a VirtualMachineInstance launch measurement", func() {
+			domainLaunchSecurityParameters := &libvirt.DomainLaunchSecurityParameters{
+				SEVMeasurementSet: true,
+				SEVMeasurement:    "AAABBBCCC",
+			}
+			loaderBytes := []byte("OVMF binary with SEV support")
+			vmi := newVMI(testNamespace, testVmName)
+
+			mockConn.EXPECT().LookupDomainByName(testDomainName).Return(mockDomain, nil)
+			// Make sure that we always free the domain after use
+			mockDomain.EXPECT().Free()
+			mockDomain.EXPECT().GetLaunchSecurityInfo(uint32(0)).Return(domainLaunchSecurityParameters, nil)
+
+			ovmfDir, err := os.MkdirTemp("", "ovmfdir")
+			Expect(err).To(BeNil())
+			defer os.RemoveAll(ovmfDir)
+			err = ioutil.WriteFile(filepath.Join(ovmfDir, efi.EFICodeSEV), loaderBytes, 0644)
+			Expect(err).To(BeNil())
+
+			manager, _ := NewLibvirtDomainManager(mockConn, testVirtShareDir, nil, ovmfDir, ephemeralDiskCreatorMock)
+			sevMeasurementInfo, err := manager.GetLaunchMeasurement(vmi)
+			Expect(err).To(BeNil())
+			Expect(sevMeasurementInfo.Measurement).To(Equal(domainLaunchSecurityParameters.SEVMeasurement))
+			Expect(sevMeasurementInfo.LoaderSHA).To(Equal(fmt.Sprintf("%x", sha256.Sum256(loaderBytes))))
 		})
 	})
 	Context("test marking graceful shutdown", func() {

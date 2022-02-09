@@ -28,6 +28,7 @@ service Cmd {
   rpc Exec(ExecRequest) returns (ExecResponse) {}
   rpc GuestPing(GuestPingRequest) returns (GuestPingResponse) {}
   rpc GetSEVInfo(EmptyRequest) returns (SEVInfoResponse) {}
+  rpc GetLaunchMeasurement(VMIRequest) returns (LaunchMeasurementResponse) {}
 }
 
 message VMI {
@@ -163,4 +164,9 @@ message FreezeRequest {
 message SEVInfoResponse {
   Response response = 1;
   bytes sevInfo = 2;
+}
+
+message LaunchMeasurementResponse {
+  Response response = 1;
+  bytes launchMeasurement = 2;
 }
