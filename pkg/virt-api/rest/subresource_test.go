@@ -1794,6 +1794,10 @@ var _ = Describe("VirtualMachineInstance Subresources", func() {
 			}
 		}
 
+		withScheduledPhase := func(vmi *v1.VirtualMachineInstance) {
+			vmi.Status.Phase = v1.Scheduled
+		}
+
 		BeforeEach(func() {
 			enableFeatureGate(virtconfig.WorkloadEncryptionSEV)
 		})
@@ -1853,6 +1857,29 @@ var _ = Describe("VirtualMachineInstance Subresources", func() {
 			table.Entry("when VMI is not paused", Running, UnPaused, withPreAttestation),
 			table.Entry("when pre-attestation is not requested ", Running, Paused),
 		)
+
+		It("Should allow to setup SEV session parameter for a paused VMI with requested pre-attestation", func() {
+			sevSessionOptions := &v1.SEVSessionOptions{
+				Session: "AAABBB",
+				DHCert:  "CCCDDD",
+			}
+			body, err := json.Marshal(sevSessionOptions)
+			Expect(err).ToNot(HaveOccurred())
+			request.Request.Body = &readCloserWrapper{bytes.NewReader(body)}
+
+			expectVMI(NotRunning, UnPaused, withPreAttestation, withScheduledPhase)
+			vmiClient.EXPECT().Patch(testVMIName, types.JSONPatchType, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(name string, patchType types.PatchType, body interface{}, opts *k8smetav1.PatchOptions) (interface{}, interface{}) {
+					patch := []byte(`[{ "op": "test", "path": "/spec/domain/launchSecurity/sev", "value": {"preAttestation":true} }, { "op": "replace", "path": "/spec/domain/launchSecurity/sev", "value": {"preAttestation":true,"session":"AAABBB","dhCert":"CCCDDD"} }]`)
+					Expect(body).To(Equal(patch))
+					return nil, nil
+				},
+			)
+
+			app.SEVSetupSessionHandler(request, response)
+			Expect(response.Error()).ToNot(HaveOccurred())
+			Expect(response.StatusCode()).To(Equal(http.StatusAccepted))
+		})
 	})
 
 	AfterEach(func() {

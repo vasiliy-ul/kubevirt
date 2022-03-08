@@ -215,6 +215,7 @@ type VirtualMachineInstanceInterface interface {
 	RemoveVolume(name string, removeVolumeOptions *v1.RemoveVolumeOptions) error
 	SEVFetchCertChain(name string) (v1.SEVPlatformInfo, error)
 	SEVQueryLaunchMeasurement(name string) (v1.SEVMeasurementInfo, error)
+	SEVSetupSession(name string, sevSessionOptions *v1.SEVSessionOptions) error
 }
 
 type ReplicaSetInterface interface {

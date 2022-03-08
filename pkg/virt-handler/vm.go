@@ -2457,6 +2457,14 @@ func (d *VirtualMachineController) vmUpdateHelperDefault(origVMI *v1.VirtualMach
 		return fmt.Errorf(unableCreateVirtLauncherConnectionFmt, err)
 	}
 
+	if util.IsPreAttestationRequested(origVMI) {
+		sev := origVMI.Spec.Domain.LaunchSecurity.SEV
+		if sev.Session == "" || sev.DHCert == "" {
+			// Wait for the session parameters to be provided
+			return nil
+		}
+	}
+
 	vmi := origVMI.DeepCopy()
 	// Find preallocated volumes
 	var preallocatedVolumes []string

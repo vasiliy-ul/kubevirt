@@ -619,6 +619,10 @@ type SEV struct {
 	// Run attestation before launching the vmi.
 	// Defaults to false.
 	PreAttestation bool `json:"preAttestation,omitempty"`
+	// Base64 encoded session blob.
+	Session string `json:"session,omitempty"`
+	// Base64 encoded guest owner's Diffie-Hellman key.
+	DHCert string `json:"dhCert,omitempty"`
 }
 
 type LunTarget struct {

@@ -5596,10 +5596,17 @@ var CRDsValidation map[string]string = map[string]string{
                         sev:
                           description: AMD Secure Encrypted Virtualization (SEV).
                           properties:
+                            dhCert:
+                              description: Base64 encoded guest owner's Diffie-Hellman
+                                key.
+                              type: string
                             preAttestation:
                               description: Run attestation before launching the vmi.
                                 Defaults to false.
                               type: boolean
+                            session:
+                              description: Base64 encoded session blob.
+                              type: string
                           type: object
                       type: object
                     machine:
@@ -8798,10 +8805,16 @@ var CRDsValidation map[string]string = map[string]string{
                 sev:
                   description: AMD Secure Encrypted Virtualization (SEV).
                   properties:
+                    dhCert:
+                      description: Base64 encoded guest owner's Diffie-Hellman key.
+                      type: string
                     preAttestation:
                       description: Run attestation before launching the vmi. Defaults
                         to false.
                       type: boolean
+                    session:
+                      description: Base64 encoded session blob.
+                      type: string
                   type: object
               type: object
             machine:
@@ -10913,10 +10926,16 @@ var CRDsValidation map[string]string = map[string]string{
                 sev:
                   description: AMD Secure Encrypted Virtualization (SEV).
                   properties:
+                    dhCert:
+                      description: Base64 encoded guest owner's Diffie-Hellman key.
+                      type: string
                     preAttestation:
                       description: Run attestation before launching the vmi. Defaults
                         to false.
                       type: boolean
+                    session:
+                      description: Base64 encoded session blob.
+                      type: string
                   type: object
               type: object
             machine:
@@ -13019,10 +13038,17 @@ var CRDsValidation map[string]string = map[string]string{
                         sev:
                           description: AMD Secure Encrypted Virtualization (SEV).
                           properties:
+                            dhCert:
+                              description: Base64 encoded guest owner's Diffie-Hellman
+                                key.
+                              type: string
                             preAttestation:
                               description: Run attestation before launching the vmi.
                                 Defaults to false.
                               type: boolean
+                            session:
+                              description: Base64 encoded session blob.
+                              type: string
                           type: object
                       type: object
                     machine:
@@ -16654,10 +16680,17 @@ var CRDsValidation map[string]string = map[string]string{
                                   description: AMD Secure Encrypted Virtualization
                                     (SEV).
                                   properties:
+                                    dhCert:
+                                      description: Base64 encoded guest owner's Diffie-Hellman
+                                        key.
+                                      type: string
                                     preAttestation:
                                       description: Run attestation before launching
                                         the vmi. Defaults to false.
                                       type: boolean
+                                    session:
+                                      description: Base64 encoded session blob.
+                                      type: string
                                   type: object
                               type: object
                             machine:
@@ -20654,10 +20687,17 @@ var CRDsValidation map[string]string = map[string]string{
                                       description: AMD Secure Encrypted Virtualization
                                         (SEV).
                                       properties:
+                                        dhCert:
+                                          description: Base64 encoded guest owner's
+                                            Diffie-Hellman key.
+                                          type: string
                                         preAttestation:
                                           description: Run attestation before launching
                                             the vmi. Defaults to false.
                                           type: boolean
+                                        session:
+                                          description: Base64 encoded session blob.
+                                          type: string
                                       type: object
                                   type: object
                                 machine:

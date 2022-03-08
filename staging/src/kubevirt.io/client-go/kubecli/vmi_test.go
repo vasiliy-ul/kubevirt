@@ -363,6 +363,17 @@ var _ = Describe("Kubevirt VirtualMachineInstance Client", func() {
 		Expect(fetchedInfo).To(Equal(sevMeasurementInfo), "fetched info should be the same as passed in")
 	})
 
+	It("should setup SEV session for a VirtualMachineInstance", func() {
+		server.AppendHandlers(ghttp.CombineHandlers(
+			ghttp.VerifyRequest("PUT", path.Join(subVMPath, "sev/setupsession")),
+			ghttp.RespondWithJSONEncoded(http.StatusOK, nil),
+		))
+		err := client.VirtualMachineInstance(k8sv1.NamespaceDefault).SEVSetupSession("testvm", &v1.SEVSessionOptions{})
+
+		Expect(server.ReceivedRequests()).To(HaveLen(1))
+		Expect(err).ToNot(HaveOccurred())
+	})
+
 	AfterEach(func() {
 		server.Close()
 	})

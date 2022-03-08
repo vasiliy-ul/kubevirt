@@ -1313,3 +1313,85 @@ func (app *SubresourceAPIApp) SEVQueryLaunchMeasurementHandler(request *restful.
 
 	app.httpGetRequestHandler(request, response, validate, getURL, v1.SEVMeasurementInfo{})
 }
+
+func (app *SubresourceAPIApp) SEVSetupSessionHandler(request *restful.Request, response *restful.Response) {
+	if !app.clusterConfig.WorkloadEncryptionSEVEnabled() {
+		writeError(errors.NewBadRequest(fmt.Sprintf(featureGateDisabledFmt, virtconfig.WorkloadEncryptionSEV)), response)
+		return
+	}
+
+	opts := &v1.SEVSessionOptions{}
+	if request.Request.Body != nil {
+		err := yaml.NewYAMLOrJSONDecoder(request.Request.Body, 1024).Decode(opts)
+		switch err {
+		case io.EOF, nil:
+			break
+		default:
+			writeError(errors.NewBadRequest(fmt.Sprintf(unmarshalRequestErrFmt, err)), response)
+			return
+		}
+	} else {
+		writeError(errors.NewBadRequest("Request with no body: SEV session parameters are required"), response)
+		return
+	}
+
+	if opts.Session == "" {
+		writeError(errors.NewBadRequest("Session blob is required"), response)
+		return
+	} else if opts.DHCert == "" {
+		writeError(errors.NewBadRequest("DH cert is required"), response)
+		return
+	}
+
+	validate := func(vmi *v1.VirtualMachineInstance) *errors.StatusError {
+		if !vmi.IsScheduled() {
+			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf("VMI is not in %s phase", v1.Scheduled))
+		}
+		if !util.IsPreAttestationRequested(vmi) {
+			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNoAttestation))
+		}
+		sev := vmi.Spec.Domain.LaunchSecurity.SEV
+		if sev.Session != "" || sev.DHCert != "" {
+			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf("Session already defined"))
+		}
+		return nil
+	}
+
+	name := request.PathParameter("name")
+	namespace := request.PathParameter("namespace")
+	vmi, statusError := app.fetchAndValidateVirtualMachineInstance(namespace, name, validate)
+	if statusError != nil {
+		writeError(statusError, response)
+		return
+	}
+
+	oldSEV := vmi.Spec.Domain.LaunchSecurity.SEV
+	oldSEVJson, err := json.Marshal(oldSEV)
+	if err != nil {
+		writeError(errors.NewInternalError(err), response)
+		return
+	}
+
+	newSEV := oldSEV.DeepCopy()
+	newSEV.Session = opts.Session
+	newSEV.DHCert = opts.DHCert
+	newSEVJson, err := json.Marshal(newSEV)
+	if err != nil {
+		writeError(errors.NewInternalError(err), response)
+		return
+	}
+
+	const patchFmt = `{ "op": "%s", "path": "/spec/domain/launchSecurity/sev", "value": %s }`
+	testSEV := fmt.Sprintf(patchFmt, "test", oldSEVJson)
+	updateSEV := fmt.Sprintf(patchFmt, "replace", newSEVJson)
+	patch := fmt.Sprintf("[%s, %s]", testSEV, updateSEV)
+
+	log.Log.Object(vmi).Infof("Patching vmi: %s", patch)
+	if _, err := app.virtCli.VirtualMachineInstance(vmi.Namespace).Patch(vmi.Name, types.JSONPatchType, []byte(patch), &k8smetav1.PatchOptions{}); err != nil {
+		log.Log.Object(vmi).Reason(err).Errorf("Failed to patch vmi")
+		writeError(errors.NewInternalError(err), response)
+		return
+	}
+
+	response.WriteHeader(http.StatusAccepted)
+}

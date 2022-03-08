@@ -325,6 +325,10 @@ var _ = Describe("[rfe_id:500][crit:high][arm64][vendor:cnv-qe@redhat.com][level
 				"virtualmachineinstances", "sev/querylaunchmeasurement",
 				allowGetFor("admin", "edit", "view"),
 				denyAllFor("default")),
+			table.Entry("on vmi sev/setupsession",
+				"virtualmachineinstances", "sev/setupsession",
+				allowGetFor("admin", "edit", "view"),
+				denyAllFor("default")),
 
 			table.Entry("on vmi filesystemlist",
 				"virtualmachineinstances", "filesystemlist",
@@ -461,6 +465,7 @@ var _ = Describe("[rfe_id:500][crit:high][arm64][vendor:cnv-qe@redhat.com][level
 				table.Entry("[test_id:2921]given a vmi", "virtualmachineinstances/guestosinfo", "get"),
 				table.Entry("[test_id:2921]given a vmi", "virtualmachineinstances/sev/fetchcertchain", "get"),
 				table.Entry("[test_id:2921]given a vmi", "virtualmachineinstances/sev/querylaunchmeasurement", "get"),
+				table.Entry("[test_id:2921]given a vmi", "virtualmachineinstances/sev/setupsession", "update"),
 			)
 		})
 	})

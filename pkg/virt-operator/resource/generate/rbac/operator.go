@@ -311,6 +311,7 @@ func NewOperatorClusterRole() *rbacv1.ClusterRole {
 					"virtualmachineinstances/freeze",
 					"virtualmachineinstances/unfreeze",
 					"virtualmachineinstances/softreboot",
+					"virtualmachineinstances/sev/setupsession",
 				},
 				Verbs: []string{
 					"update",

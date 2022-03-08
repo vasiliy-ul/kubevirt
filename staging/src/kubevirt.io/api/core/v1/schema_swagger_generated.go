@@ -358,6 +358,8 @@ func (LaunchSecurity) SwaggerDoc() map[string]string {
 func (SEV) SwaggerDoc() map[string]string {
 	return map[string]string{
 		"preAttestation": "Run attestation before launching the vmi.\nDefaults to false.",
+		"session":        "Base64 encoded session blob.",
+		"dhCert":         "Base64 encoded guest owner's Diffie-Hellman key.",
 	}
 }
 
