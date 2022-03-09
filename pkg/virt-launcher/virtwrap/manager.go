@@ -137,6 +137,7 @@ type DomainManager interface {
 	GuestPing(string) error
 	GetSEVInfo() (*v1.SEVPlatformInfo, error)
 	GetLaunchMeasurement(*v1.VirtualMachineInstance) (*v1.SEVMeasurementInfo, error)
+	InjectLaunchSecret(*v1.VirtualMachineInstance, *v1.SEVSecretOptions) error
 }
 
 type LibvirtDomainManager struct {
@@ -1825,6 +1826,36 @@ func (l *LibvirtDomainManager) GetLaunchMeasurement(vmi *v1.VirtualMachineInstan
 	sevMeasurementInfo.LoaderSHA = fmt.Sprintf("%x", h.Sum(nil))
 
 	return &sevMeasurementInfo, nil
+}
+
+func (l *LibvirtDomainManager) InjectLaunchSecret(vmi *v1.VirtualMachineInstance, sevSecretOptions *v1.SEVSecretOptions) error {
+	if sevSecretOptions.Header == "" {
+		return fmt.Errorf("Header is required")
+	} else if sevSecretOptions.Secret == "" {
+		return fmt.Errorf("Secret is required")
+	}
+
+	domName := api.VMINamespaceKeyFunc(vmi)
+	dom, err := l.virConn.LookupDomainByName(domName)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedGetDomain)
+		return err
+	}
+	defer dom.Free()
+
+	domainLaunchSecurityStateParameters := &libvirt.DomainLaunchSecurityStateParameters{}
+	domainLaunchSecurityStateParameters.SEVSecret = sevSecretOptions.Secret
+	domainLaunchSecurityStateParameters.SEVSecretSet = true
+	domainLaunchSecurityStateParameters.SEVSecretHeader = sevSecretOptions.Header
+	domainLaunchSecurityStateParameters.SEVSecretHeaderSet = true
+
+	const flags = uint32(0)
+	if err := dom.SetLaunchSecurityState(domainLaunchSecurityStateParameters, flags); err != nil {
+		log.Log.Object(vmi).Reason(err).Error("Setting launch security state failed")
+		return err
+	}
+
+	return nil
 }
 
 // check whether VMI has a certain condition

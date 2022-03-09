@@ -1293,25 +1293,11 @@ func (app *SubresourceAPIApp) SEVQueryLaunchMeasurementHandler(request *restful.
 		return
 	}
 
-	validate := func(vmi *v1.VirtualMachineInstance) *errors.StatusError {
-		if !vmi.IsRunning() {
-			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNotRunning))
-		}
-		if !util.IsPreAttestationRequested(vmi) {
-			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNoAttestation))
-		}
-		condManager := controller.NewVirtualMachineInstanceConditionManager()
-		if !condManager.HasCondition(vmi, v1.VirtualMachineInstancePaused) {
-			return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNotPaused))
-		}
-		return nil
-	}
-
 	getURL := func(vmi *v1.VirtualMachineInstance, conn kubecli.VirtHandlerConn) (string, error) {
 		return conn.SEVQueryLaunchMeasurementURI(vmi)
 	}
 
-	app.httpGetRequestHandler(request, response, validate, getURL, v1.SEVMeasurementInfo{})
+	app.httpGetRequestHandler(request, response, validateVMIForSEVPreAttestation, getURL, v1.SEVMeasurementInfo{})
 }
 
 func (app *SubresourceAPIApp) SEVSetupSessionHandler(request *restful.Request, response *restful.Response) {
@@ -1394,4 +1380,37 @@ func (app *SubresourceAPIApp) SEVSetupSessionHandler(request *restful.Request, r
 	}
 
 	response.WriteHeader(http.StatusAccepted)
+}
+
+func (app *SubresourceAPIApp) SEVInjectLaunchSecretHandler(request *restful.Request, response *restful.Response) {
+	if !app.clusterConfig.WorkloadEncryptionSEVEnabled() {
+		writeError(errors.NewBadRequest(fmt.Sprintf(featureGateDisabledFmt, virtconfig.WorkloadEncryptionSEV)), response)
+		return
+	}
+
+	if request.Request.Body == nil {
+		writeError(errors.NewBadRequest("Request with no body: SEV secret parameters are required"), response)
+		return
+	}
+
+	getURL := func(vmi *v1.VirtualMachineInstance, conn kubecli.VirtHandlerConn) (string, error) {
+		return conn.SEVInjectLaunchSecretURI(vmi)
+	}
+
+	app.putRequestHandler(request, response, validateVMIForSEVPreAttestation, getURL, false)
+}
+
+// Validate a VMI for SEV pre-attestation: Running, Paused and with PreAttestation requested.
+func validateVMIForSEVPreAttestation(vmi *v1.VirtualMachineInstance) *errors.StatusError {
+	if !vmi.IsRunning() {
+		return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNotRunning))
+	}
+	if !util.IsPreAttestationRequested(vmi) {
+		return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNoAttestation))
+	}
+	condManager := controller.NewVirtualMachineInstanceConditionManager()
+	if !condManager.HasCondition(vmi, v1.VirtualMachineInstancePaused) {
+		return errors.NewConflict(v1.Resource("virtualmachineinstance"), vmi.Name, fmt.Errorf(vmiNotPaused))
+	}
+	return nil
 }

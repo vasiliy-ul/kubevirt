@@ -332,6 +332,7 @@ spec:
           - virtualmachineinstances/unfreeze
           - virtualmachineinstances/softreboot
           - virtualmachineinstances/sev/setupsession
+          - virtualmachineinstances/sev/injectlaunchsecret
           verbs:
           - update
           - get
@@ -580,6 +581,7 @@ spec:
           - virtualmachineinstances/unfreeze
           - virtualmachineinstances/softreboot
           - virtualmachineinstances/sev/setupsession
+          - virtualmachineinstances/sev/injectlaunchsecret
           verbs:
           - update
         - apiGroups:
@@ -753,6 +755,7 @@ spec:
           - virtualmachineinstances/unfreeze
           - virtualmachineinstances/softreboot
           - virtualmachineinstances/sev/setupsession
+          - virtualmachineinstances/sev/injectlaunchsecret
           verbs:
           - update
         - apiGroups:
@@ -853,6 +856,7 @@ spec:
           - virtualmachineinstances/unfreeze
           - virtualmachineinstances/softreboot
           - virtualmachineinstances/sev/setupsession
+          - virtualmachineinstances/sev/injectlaunchsecret
           verbs:
           - update
         - apiGroups:

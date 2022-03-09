@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 
+	v1 "kubevirt.io/api/core/v1"
 	v12 "kubevirt.io/api/core/v1"
 	"kubevirt.io/client-go/log"
 	cmdclient "kubevirt.io/kubevirt/pkg/virt-handler/cmd-client"
@@ -403,4 +404,54 @@ func (lh *LifecycleHandler) SEVQueryLaunchMeasurementHandler(request *restful.Re
 	}
 
 	response.WriteEntity(sevMeasurementInfo)
+}
+
+func (lh *LifecycleHandler) SEVInjectLaunchSecretHandler(request *restful.Request, response *restful.Response) {
+	vmi, code, err := getVMI(request, lh.vmiInformer)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedRetrieveVMI)
+		response.WriteError(code, err)
+		return
+	}
+
+	sockFile, err := cmdclient.FindSocketOnHost(vmi)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedDetectCmdClient)
+		response.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	client, err := cmdclient.NewClient(sockFile)
+	if err != nil {
+		log.Log.Object(vmi).Reason(err).Error(failedConnectCmdClient)
+		response.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	opts := &v1.SEVSecretOptions{}
+	if request.Request.Body != nil {
+		err := yaml.NewYAMLOrJSONDecoder(request.Request.Body, 1024).Decode(opts)
+		switch err {
+		case io.EOF, nil:
+			break
+		default:
+			log.Log.Object(vmi).Reason(err).Error("Failed to decode SEV secret parameters")
+			response.WriteError(http.StatusBadRequest, err)
+			return
+		}
+	} else {
+		log.Log.Object(vmi).Reason(err).Error("Request with no body: SEV secret parameters are required")
+		response.WriteError(http.StatusBadRequest, fmt.Errorf("failed to retrieve SEV secret parameters from request"))
+		return
+	}
+
+	log.Log.Object(vmi).Infof("Injecting SEV launch secret")
+
+	if err := client.InjectLaunchSecret(vmi, opts); err != nil {
+		log.Log.Object(vmi).Reason(err).Error("Failed to inject SEV launch secret")
+		response.WriteError(http.StatusInternalServerError, err)
+		return
+	}
+
+	response.WriteHeader(http.StatusAccepted)
 }
