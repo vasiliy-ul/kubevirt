@@ -46,13 +46,17 @@ type LifecycleHandler struct {
 	recorder     record.EventRecorder
 	vmiInformer  cache.SharedIndexInformer
 	virtShareDir string
+	pdh          string
+	certChain    string
 }
 
-func NewLifecycleHandler(recorder record.EventRecorder, vmiInformer cache.SharedIndexInformer, virtShareDir string) *LifecycleHandler {
+func NewLifecycleHandler(recorder record.EventRecorder, vmiInformer cache.SharedIndexInformer, virtShareDir, pdh, certChain string) *LifecycleHandler {
 	return &LifecycleHandler{
 		recorder:     recorder,
 		vmiInformer:  vmiInformer,
 		virtShareDir: virtShareDir,
+		pdh:          pdh,
+		certChain:    certChain,
 	}
 }
 
@@ -339,7 +343,7 @@ func (lh *LifecycleHandler) GetFilesystems(request *restful.Request, response *r
 }
 
 func (lh *LifecycleHandler) SEVFetchCertChainHandler(request *restful.Request, response *restful.Response) {
-	vmi, code, err := getVMI(request, lh.vmiInformer)
+	/*vmi, code, err := getVMI(request, lh.vmiInformer)
 	if err != nil {
 		log.Log.Object(vmi).Reason(err).Error(failedRetrieveVMI)
 		response.WriteError(code, err)
@@ -367,6 +371,13 @@ func (lh *LifecycleHandler) SEVFetchCertChainHandler(request *restful.Request, r
 		log.Log.Object(vmi).Reason(err).Error("Failed to get SEV platform info")
 		response.WriteError(http.StatusInternalServerError, err)
 		return
+	}*/
+
+	log.Log.Infof("Retreiving SEV platform info")
+
+	sevPlatformInfo := v1.SEVPlatformInfo{
+		PDH:       lh.pdh,
+		CertChain: lh.certChain,
 	}
 
 	response.WriteEntity(sevPlatformInfo)

@@ -308,12 +308,16 @@ func (app *virtHandlerApp) Run() {
 	defer close(stop)
 	// Currently nodeLabeller only support x86_64
 	var capabilities *api.Capabilities
+	var pdh string
+	var certChain string
 	if virtconfig.IsAMD64(runtime.GOARCH) {
 		nodeLabellerController, err := nodelabeller.NewNodeLabeller(app.clusterConfig, app.virtCli, app.HostOverride, app.namespace)
 		if err != nil {
 			panic(err)
 		}
 		capabilities = nodeLabellerController.HostCapabilities()
+		pdh = nodeLabellerController.SEV.PDH
+		certChain = nodeLabellerController.SEV.CertChain
 
 		go nodeLabellerController.Run(10, stop)
 	}
@@ -356,6 +360,8 @@ func (app *virtHandlerApp) Run() {
 		recorder,
 		vmiSourceInformer,
 		app.VirtShareDir,
+		pdh,
+		certChain,
 	)
 
 	promdomain.SetupDomainStatsCollector(app.virtCli, app.VirtShareDir, app.HostOverride, app.MaxRequestsInFlight, vmiSourceInformer)
