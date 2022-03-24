@@ -6,7 +6,15 @@ metadata:
     special: vmi-fedora
   name: vmi-fedora
 spec:
+  startStrategy: "Paused"
   domain:
+    firmware:
+      bootloader:
+        efi:
+          secureBoot: false
+    launchSecurity:
+      sev:
+        preAttestation: true
     devices:
       disks:
       - disk:

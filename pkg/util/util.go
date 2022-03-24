@@ -85,6 +85,9 @@ func IsSEVVMI(vmi *v1.VirtualMachineInstance) bool {
 
 // Check if a VMI spec requests pre-attestation
 func IsPreAttestationRequested(vmi *v1.VirtualMachineInstance) bool {
+	if _, ok := vmi.Labels["attestation"]; ok {
+		return true
+	}
 	return IsSEVVMI(vmi) && vmi.Spec.Domain.LaunchSecurity.SEV.PreAttestation
 }
 

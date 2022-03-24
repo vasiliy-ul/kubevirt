@@ -72,7 +72,7 @@ func newFedora(containerDisk cd.ContainerDisk, opts ...Option) *kvirtv1.VirtualM
 		WithTerminationGracePeriod(DefaultTestGracePeriod),
 		WithResourceMemory("512M"),
 		WithRng(),
-		WithContainerImage(cd.ContainerDiskFor(containerDisk)),
+		WithContainerImage("ghcr.io/vasiliy-ul/fedora-with-test-tooling:latest" /*cd.ContainerDiskFor(containerDisk)*/),
 	}
 	opts = append(fedoraOptions, opts...)
 	return New(RandName(DefaultVmiName), opts...)

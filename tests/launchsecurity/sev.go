@@ -182,7 +182,7 @@ var _ = Describe("[sig-compute]AMD Secure Encrypted Virtualization (SEV)", func(
 		Expect(err).ToNot(HaveOccurred())
 	})
 
-	It("should run guest attestation", func() {
+	FIt("should run guest attestation", func() {
 		vmi := libvmi.NewSEVFedora(libvmi.WithPreAttestation())
 		vmi = tests.RunVMI(vmi, 30)
 		Eventually(ThisVMI(vmi), 60).Should(BeInPhase(v1.Scheduled))

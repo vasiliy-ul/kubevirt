@@ -338,6 +338,8 @@ func (w *ObjectEventWatcher) SinceResourceVersion(rv string) *ObjectEventWatcher
 	return w
 }
 
+var nnn int = 0
+
 func (w *ObjectEventWatcher) Watch(ctx context.Context, processFunc ProcessFunc, watchedDescription string) {
 	Expect(w.startType).ToNot(Equal(invalidWatch))
 	resourceVersion := ""
@@ -395,6 +397,9 @@ func (w *ObjectEventWatcher) Watch(ctx context.Context, processFunc ProcessFunc,
 		selector = append(selector, fmt.Sprintf("involvedObject.uid=%v", uid))
 	}
 
+	id := nnn
+	nnn = nnn + 1
+
 	eventWatcher, err := cli.CoreV1().Events(k8sv1.NamespaceAll).
 		Watch(context.Background(), metav1.ListOptions{
 			FieldSelector:   fields.ParseSelectorOrDie(strings.Join(selector, ",")).String(),
@@ -403,12 +408,17 @@ func (w *ObjectEventWatcher) Watch(ctx context.Context, processFunc ProcessFunc,
 	if err != nil {
 		panic(err)
 	}
-	defer eventWatcher.Stop()
+	defer func() {
+		eventWatcher.Stop()
+		log.Log.Infof("XXX eventWatcher.Stop!!!! %d", id)
+	}()
+	//defer eventWatcher.Stop()
 	done := make(chan struct{})
 
 	go func() {
 		defer GinkgoRecover()
 		for watchEvent := range eventWatcher.ResultChan() {
+			log.Log.Infof("XXX GOROUTINE EVENT!!!! %d", id)
 			if watchEvent.Type != watch.Error {
 				event := watchEvent.Object.(*k8sv1.Event)
 				if f(event) {
@@ -422,20 +432,26 @@ func (w *ObjectEventWatcher) Watch(ctx context.Context, processFunc ProcessFunc,
 					//api server sometimes closes connections to Watch() client command
 					//ignore this error, because it will reconnect automatically
 					if status.Message != ApiServerCloseConnectionError {
+						log.Log.Infof("XXX GOROUTINE FAIL1!!!! %d", id)
 						Fail(fmt.Sprintf("unexpected error event: %v", errors.FromObject(watchEvent.Object)))
 					}
 				default:
+					log.Log.Infof("XXX GOROUTINE FAIL2!!!! %d", id)
 					Fail(fmt.Sprintf("unexpected error event: %v", errors.FromObject(watchEvent.Object)))
 				}
 			}
 		}
+		log.Log.Infof("XXX EXITING GOROUTINE!!!! %d", id)
 	}()
 
 	if w.timeout != nil {
 		select {
 		case <-done:
+			//log.Log.Infof("XXX 1 <-done!!!! %d", id)
 		case <-ctx.Done():
+			//log.Log.Infof("XXX 1 <-ctx.Done!!!! %d", id)
 		case <-time.After(*w.timeout):
+			//log.Log.Infof("XXX 1 <-time.After(*w.timeout)!!!! %d", id)
 			if !w.dontFailOnMissingEvent {
 				Fail(fmt.Sprintf("Waited for %v seconds on the event stream to match a specific event: %s", w.timeout.Seconds(), watchedDescription), 1)
 			}
@@ -443,7 +459,9 @@ func (w *ObjectEventWatcher) Watch(ctx context.Context, processFunc ProcessFunc,
 	} else {
 		select {
 		case <-ctx.Done():
+			//log.Log.Infof("XXX 2 <-ctx.Done!!!! %d", id)
 		case <-done:
+			//log.Log.Infof("XXX 2 <-done!!!! %d", id)
 		}
 	}
 }
@@ -2931,6 +2949,7 @@ func waitForVMIPhase(ctx context.Context, phases []v1.VirtualMachineInstancePhas
 	go func() {
 		defer GinkgoRecover()
 		objectEventWatcher.WaitFor(ctx, NormalEvent, v1.Started)
+		log.Log.Infof("XXX YYY EXITING GOROUTINE!!!!")
 	}()
 
 	timeoutMsg := fmt.Sprintf("Timed out waiting for VMI %s to enter %s phase(s)", vmi.Name, phases)
