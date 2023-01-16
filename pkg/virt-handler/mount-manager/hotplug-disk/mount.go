@@ -167,7 +167,7 @@ func (m *volumeMounter) writePathToMountRecord(path string, vmi *v1.VirtualMachi
 	record = append(record, mountutils.MountTargetEntry{
 		TargetFile: path,
 	})
-	if err := m.mountRecorder.SetMountRecordHotpluggedVolumes(vmi, record); err != nil {
+	if err := m.mountRecorder.SetMountRecord(vmi, record); err != nil {
 		return err
 	}
 	return nil
@@ -201,7 +201,7 @@ func (m *volumeMounter) MountFromPod(vmi *v1.VirtualMachineInstance, sourceUID t
 }
 
 func (m *volumeMounter) mountFromPod(vmi *v1.VirtualMachineInstance, sourceUID types.UID) error {
-	record, err := m.mountRecorder.GetHotpluggedVolumesMountRecord(vmi)
+	record, err := m.mountRecorder.GetMountRecord(vmi)
 	if err != nil {
 		return err
 	}
@@ -501,7 +501,7 @@ func (m *volumeMounter) getSourcePodFilePath(sourceUID types.UID, vmi *v1.Virtua
 // Unmount unmounts all hotplug disk that are no longer part of the VMI
 func (m *volumeMounter) Unmount(vmi *v1.VirtualMachineInstance) error {
 	if vmi.UID != "" {
-		record, err := m.mountRecorder.GetHotpluggedVolumesMountRecord(vmi)
+		record, err := m.mountRecorder.GetMountRecord(vmi)
 		if err != nil {
 			return err
 		}
@@ -517,7 +517,7 @@ func (m *volumeMounter) Unmount(vmi *v1.VirtualMachineInstance) error {
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				// no mounts left, the base path does not even exist anymore
-				if err := m.mountRecorder.DeleteHotpluggedVolumesMountRecord(vmi); err != nil {
+				if err := m.mountRecorder.DeleteMountRecord(vmi); err != nil {
 					return fmt.Errorf("failed to delete hp mount target records: %v", err)
 				}
 				return nil
@@ -576,9 +576,9 @@ func (m *volumeMounter) Unmount(vmi *v1.VirtualMachineInstance) error {
 			}
 		}
 		if len(newRecord) > 0 {
-			err = m.mountRecorder.SetMountRecordHotpluggedVolumes(vmi, newRecord)
+			err = m.mountRecorder.SetMountRecord(vmi, newRecord)
 		} else {
-			err = m.mountRecorder.DeleteHotpluggedVolumesMountRecord(vmi)
+			err = m.mountRecorder.DeleteMountRecord(vmi)
 		}
 		if err != nil {
 			return err
@@ -630,7 +630,7 @@ func (m *volumeMounter) UnmountAll(vmi *v1.VirtualMachineInstance) error {
 	if vmi.UID != "" {
 		logger := log.DefaultLogger().Object(vmi)
 		logger.Info("Cleaning up remaining hotplug volumes")
-		record, err := m.mountRecorder.GetHotpluggedVolumesMountRecord(vmi)
+		record, err := m.mountRecorder.GetMountRecord(vmi)
 		if err != nil {
 			return err
 		} else if record == nil {
@@ -664,7 +664,7 @@ func (m *volumeMounter) UnmountAll(vmi *v1.VirtualMachineInstance) error {
 				}
 			}
 		}
-		err = m.mountRecorder.DeleteHotpluggedVolumesMountRecord(vmi)
+		err = m.mountRecorder.DeleteMountRecord(vmi)
 		if err != nil {
 			return err
 		}

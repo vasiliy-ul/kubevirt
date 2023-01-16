@@ -58,11 +58,11 @@ func NewMounter(isoDetector isolation.PodIsolationDetector, clusterConfig *virtc
 }
 
 func (m *mounter) addMountTargetRecord(vmi *v1.VirtualMachineInstance, record []mountutils.MountTargetEntry) error {
-	return m.mountRecorder.SetAddMountRecordContainerDisk(vmi, record, true)
+	return m.mountRecorder.AddMountRecord(vmi, record)
 }
 
 func (m *mounter) setMountTargetRecord(vmi *v1.VirtualMachineInstance, record []mountutils.MountTargetEntry) error {
-	return m.mountRecorder.SetAddMountRecordContainerDisk(vmi, record, false)
+	return m.mountRecorder.SetMountRecord(vmi, record)
 }
 
 // Mount takes a vmi and mounts all container disks of the VMI, so that they are visible for the qemu process.
@@ -184,7 +184,7 @@ func (m *mounter) Unmount(vmi *v1.VirtualMachineInstance) error {
 		return fmt.Errorf("error unmounting kernel artifacts: %v", err)
 	}
 
-	record, err := m.mountRecorder.GetContainerDisksMountRecord(vmi)
+	record, err := m.mountRecorder.GetMountRecord(vmi)
 	if err != nil {
 		return err
 	}
@@ -217,7 +217,7 @@ func (m *mounter) Unmount(vmi *v1.VirtualMachineInstance) error {
 			}
 		}
 	}
-	err = m.mountRecorder.DeleteContainerDisksMountRecord(vmi)
+	err = m.mountRecorder.DeleteMountRecord(vmi)
 	if err != nil {
 		return err
 	}
@@ -393,7 +393,7 @@ func (m *mounter) unmountKernelArtifacts(vmi *v1.VirtualMachineInstance) error {
 
 	kb := vmi.Spec.Domain.Firmware.KernelBoot.Container
 
-	record, err := m.mountRecorder.GetContainerDisksMountRecord(vmi)
+	record, err := m.mountRecorder.GetMountRecord(vmi)
 	if err != nil {
 		return fmt.Errorf("failed to get mount target record: %v", err)
 	}

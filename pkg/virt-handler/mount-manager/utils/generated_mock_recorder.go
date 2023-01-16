@@ -29,86 +29,43 @@ func (_m *MockMountRecorder) EXPECT() *_MockMountRecorderRecorder {
 	return _m.recorder
 }
 
-func (_m *MockMountRecorder) SetAddMountRecordContainerDisk(vmi *v1.VirtualMachineInstance, cdRecord []MountTargetEntry, addPreviousRules bool) error {
-	ret := _m.ctrl.Call(_m, "SetAddMountRecordContainerDisk", vmi, cdRecord, addPreviousRules)
+func (_m *MockMountRecorder) SetMountRecord(vmi *v1.VirtualMachineInstance, entries []MountTargetEntry) error {
+	ret := _m.ctrl.Call(_m, "SetMountRecord", vmi, entries)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMountRecorderRecorder) SetAddMountRecordContainerDisk(arg0, arg1, arg2 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetAddMountRecordContainerDisk", arg0, arg1, arg2)
+func (_mr *_MockMountRecorderRecorder) SetMountRecord(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMountRecord", arg0, arg1)
 }
 
-func (_m *MockMountRecorder) DeleteContainerDisksMountRecord(vmi *v1.VirtualMachineInstance) error {
-	ret := _m.ctrl.Call(_m, "DeleteContainerDisksMountRecord", vmi)
+func (_m *MockMountRecorder) AddMountRecord(vmi *v1.VirtualMachineInstance, entries []MountTargetEntry) error {
+	ret := _m.ctrl.Call(_m, "AddMountRecord", vmi, entries)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMountRecorderRecorder) DeleteContainerDisksMountRecord(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteContainerDisksMountRecord", arg0)
+func (_mr *_MockMountRecorderRecorder) AddMountRecord(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "AddMountRecord", arg0, arg1)
 }
 
-func (_m *MockMountRecorder) GetContainerDisksMountRecord(vmi *v1.VirtualMachineInstance) ([]MountTargetEntry, error) {
-	ret := _m.ctrl.Call(_m, "GetContainerDisksMountRecord", vmi)
+func (_m *MockMountRecorder) GetMountRecord(vmi *v1.VirtualMachineInstance) ([]MountTargetEntry, error) {
+	ret := _m.ctrl.Call(_m, "GetMountRecord", vmi)
 	ret0, _ := ret[0].([]MountTargetEntry)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-func (_mr *_MockMountRecorderRecorder) GetContainerDisksMountRecord(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetContainerDisksMountRecord", arg0)
+func (_mr *_MockMountRecorderRecorder) GetMountRecord(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetMountRecord", arg0)
 }
 
-func (_m *MockMountRecorder) SetMountRecordHotpluggedVolumes(vmi *v1.VirtualMachineInstance, hpRecord []MountTargetEntry) error {
-	ret := _m.ctrl.Call(_m, "SetMountRecordHotpluggedVolumes", vmi, hpRecord)
+func (_m *MockMountRecorder) DeleteMountRecord(vmi *v1.VirtualMachineInstance) error {
+	ret := _m.ctrl.Call(_m, "DeleteMountRecord", vmi)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockMountRecorderRecorder) SetMountRecordHotpluggedVolumes(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetMountRecordHotpluggedVolumes", arg0, arg1)
-}
-
-func (_m *MockMountRecorder) GetHotpluggedVolumesMountRecord(vmi *v1.VirtualMachineInstance) ([]MountTargetEntry, error) {
-	ret := _m.ctrl.Call(_m, "GetHotpluggedVolumesMountRecord", vmi)
-	ret0, _ := ret[0].([]MountTargetEntry)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-func (_mr *_MockMountRecorderRecorder) GetHotpluggedVolumesMountRecord(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetHotpluggedVolumesMountRecord", arg0)
-}
-
-func (_m *MockMountRecorder) DeleteHotpluggedVolumesMountRecord(vmi *v1.VirtualMachineInstance) error {
-	ret := _m.ctrl.Call(_m, "DeleteHotpluggedVolumesMountRecord", vmi)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMountRecorderRecorder) DeleteHotpluggedVolumesMountRecord(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteHotpluggedVolumesMountRecord", arg0)
-}
-
-func (_m *MockMountRecorder) ReadRecordFiles(uid string) (*VMIMountTargetRecord, bool, error) {
-	ret := _m.ctrl.Call(_m, "ReadRecordFiles", uid)
-	ret0, _ := ret[0].(*VMIMountTargetRecord)
-	ret1, _ := ret[1].(bool)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-func (_mr *_MockMountRecorderRecorder) ReadRecordFiles(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReadRecordFiles", arg0)
-}
-
-func (_m *MockMountRecorder) WriteRecordFiles(uid string, record *VMIMountTargetRecord) error {
-	ret := _m.ctrl.Call(_m, "WriteRecordFiles", uid, record)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockMountRecorderRecorder) WriteRecordFiles(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "WriteRecordFiles", arg0, arg1)
+func (_mr *_MockMountRecorderRecorder) DeleteMountRecord(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeleteMountRecord", arg0)
 }

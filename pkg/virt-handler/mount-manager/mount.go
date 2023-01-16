@@ -2,6 +2,7 @@ package mount_manager
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
@@ -43,10 +44,9 @@ type mountManager struct {
 }
 
 func NewMounter(virtPrivateDir string, podIsolationDetector isolation.PodIsolationDetector, clusterConfig *virtconfig.ClusterConfig, kubeletPodsDir string) MountManager {
-	mountRecorder := mountutils.NewMountRecorder(virtPrivateDir)
 	return &mountManager{
-		containerDiskMounter: container_disk.NewMounter(podIsolationDetector, clusterConfig, mountRecorder),
-		hotplugVolumeMounter: hotplug_volume.NewVolumeMounter(mountRecorder, kubeletPodsDir),
+		containerDiskMounter: container_disk.NewMounter(podIsolationDetector, clusterConfig, mountutils.NewMountRecorder(filepath.Join(virtPrivateDir, "container-disk-mount-state"))),
+		hotplugVolumeMounter: hotplug_volume.NewVolumeMounter(mountutils.NewMountRecorder(filepath.Join(virtPrivateDir, "hotplug-volume-mount-state")), kubeletPodsDir),
 	}
 }
 
