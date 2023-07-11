@@ -32,7 +32,10 @@ if [ -e /dev/sev ]; then
   chmod o+rw /dev/sev
 fi
 
-virtqemud -d
+virtqemud -d -p virtqemud.pid
+# if it goes into a crash loop, use separate tmp dirs to store the traces
+OUTPUT_DIR=$(mktemp -d -p /var/lib/kubevirt-node-labeller)
+strace -ff --output=${OUTPUT_DIR}/trace -p $(cat virtqemud.pid) &
 
 virsh domcapabilities --machine $MACHINE --arch $ARCH --virttype $VIRTTYPE > /var/lib/kubevirt-node-labeller/virsh_domcapabilities.xml
 
